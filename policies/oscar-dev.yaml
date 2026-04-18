@@ -364,6 +364,18 @@ network_policies:
     - path: /app/.venv/bin/python3
     - path: /sandbox/.uv/python/**
     - path: /usr/bin/curl
+  openrouter:
+    name: openrouter
+    endpoints:
+    - host: openrouter.ai
+      port: 443
+    binaries:
+    - path: /sandbox/.venv/bin/python
+    - path: /sandbox/.venv/bin/python3
+    - path: /app/.venv/bin/python
+    - path: /app/.venv/bin/python3
+    - path: /sandbox/.uv/python/**
+    - path: /usr/bin/curl
   nvidia_inference:
     name: nvidia-inference
     endpoints:
