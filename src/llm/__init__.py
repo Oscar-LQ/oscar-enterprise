@@ -31,8 +31,15 @@ def _minimax_factory(*, model: str, api_key: str) -> LLMClient:
     return MiniMaxClient(model=model, api_key=api_key).complete
 
 
+def _openrouter_factory(*, model: str, api_key: str) -> LLMClient:
+    from .openrouter import OpenRouterClient
+
+    return OpenRouterClient(model=model, api_key=api_key).complete
+
+
 _FACTORIES: dict[str, _ProviderFactory] = {
     "minimax": _minimax_factory,
+    "openrouter": _openrouter_factory,
 }
 
 
