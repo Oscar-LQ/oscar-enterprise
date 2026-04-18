@@ -82,6 +82,14 @@ Oscar's runtime LLM is model-agnostic by design. Model choice is a dependency in
 
 The build-time agents (Claude Code) are exempt from this policy — they are tools for humans, not part of Oscar's runtime.
 
+### Model Allocation
+
+Model choice is dependency injection, not hardcoded. The architectural principle:
+
+- The orchestrator (General Counsel) uses the strongest available frontier reasoning model. Today that might be GPT-5.4 or Opus 4.7; tomorrow it will be whatever has superseded them. Orchestration is reasoning-heavy and relatively low-volume — spend the tokens here.
+- Specialist agents that do the substantive work run on capable-but-cheaper models. In DEV that is MiniMax. In PROD it might be Sonnet or similar. The right choice per specialist depends on per-agent evaluation — some will need more capable models, others won't.
+- No agent hardcodes its own model. Allocation lives in configuration and is injected at startup.
+
 ---
 
 ## Sandbox

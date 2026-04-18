@@ -146,7 +146,13 @@ If something is hard to test, the design needs to change — not the test. Tests
 One line: what it does and why. Type annotations handle the contract, the docstring handles the intent.
 
 ### No Cheating on Pipeline Tests
-Unit tests use mocks — that's normal. But when testing Oscar's actual pipeline (extraction, chat responses, assessments, document generation), you must run the real LLMs configured in the project (MiniMax, GPT-5.4 via OpenRouter). You have access to these APIs. Do not substitute your own intelligence for what the pipeline would produce. The point of pipeline testing is to verify that the configured models, with the configured prompts, produce acceptable output. If you test with mocks and ship, the first real client interaction will expose every quality gap you skipped. Run the pipeline end-to-end through the real models, then verify their output meets the checkpoint criteria.
+Unit tests use mocks — that's normal. Pipeline tests must not.
+
+When testing Oscar's actual pipeline (extraction, chat responses, assessments, document generation, agent behaviour), invoke the real configured LLMs. Do not simulate, paraphrase, or describe what the LLM would say.
+
+This matters because the human currently has no way to test Oscar directly — no UI, no channels, no independent verification path. Every pipeline test you run is the only test that happens. If you substitute your own intelligence for a real invocation, the test is worthless and the human has no way to know.
+
+If the actual output isn't what was expected, that's the test result — report it.
 
 ---
 
