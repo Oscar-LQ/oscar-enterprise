@@ -51,6 +51,197 @@ network_policies:
     - path: /usr/local/bin/claude
     - path: /usr/bin/node
     - path: /sandbox/.local/share/claude/versions/**
+  claude_web_fetch:
+    name: claude-web-fetch
+    endpoints:
+    # Code hosting / raw content
+    - host: github.com
+      port: 443
+    - host: "**.github.com"
+      port: 443
+    - host: "**.githubusercontent.com"
+      port: 443
+    - host: "**.github.io"
+      port: 443
+    # Read-the-docs family
+    - host: "**.readthedocs.io"
+      port: 443
+    - host: "**.readthedocs.org"
+      port: 443
+    - host: "**.rtfd.io"
+      port: 443
+    - host: "**.rtfd.org"
+      port: 443
+    # Python ecosystem
+    - host: python.org
+      port: 443
+    - host: "**.python.org"
+      port: 443
+    - host: pypi.org
+      port: 443
+    - host: "**.pypi.org"
+      port: 443
+    - host: "**.pythonhosted.org"
+      port: 443
+    - host: "**.pydata.org"
+      port: 443
+    - host: fastapi.tiangolo.com
+      port: 443
+    - host: "**.fastapi.tiangolo.com"
+      port: 443
+    - host: djangoproject.com
+      port: 443
+    - host: "**.djangoproject.com"
+      port: 443
+    # Rust ecosystem
+    - host: rust-lang.org
+      port: 443
+    - host: "**.rust-lang.org"
+      port: 443
+    - host: crates.io
+      port: 443
+    - host: "**.crates.io"
+      port: 443
+    - host: docs.rs
+      port: 443
+    - host: "**.docs.rs"
+      port: 443
+    # Node / npm ecosystem
+    - host: npmjs.com
+      port: 443
+    - host: "**.npmjs.com"
+      port: 443
+    - host: npmjs.org
+      port: 443
+    - host: "**.npmjs.org"
+      port: 443
+    - host: nodejs.org
+      port: 443
+    - host: "**.nodejs.org"
+      port: 443
+    # Go ecosystem
+    - host: go.dev
+      port: 443
+    - host: "**.go.dev"
+      port: 443
+    - host: golang.org
+      port: 443
+    - host: "**.golang.org"
+      port: 443
+    - host: proxy.golang.org
+      port: 443
+    - host: sum.golang.org
+      port: 443
+    # Community Q&A and blogs
+    - host: stackoverflow.com
+      port: 443
+    - host: "**.stackoverflow.com"
+      port: 443
+    - host: stackexchange.com
+      port: 443
+    - host: "**.stackexchange.com"
+      port: 443
+    - host: stackoverflow.blog
+      port: 443
+    - host: "**.stackoverflow.blog"
+      port: 443
+    - host: dev.to
+      port: 443
+    - host: "**.dev.to"
+      port: 443
+    - host: medium.com
+      port: 443
+    - host: "**.medium.com"
+      port: 443
+    - host: "**.substack.com"
+      port: 443
+    # Web standards / MDN
+    - host: mozilla.org
+      port: 443
+    - host: "**.mozilla.org"
+      port: 443
+    - host: developer.mozilla.org
+      port: 443
+    - host: "**.mdn.dev"
+      port: 443
+    - host: w3.org
+      port: 443
+    - host: "**.w3.org"
+      port: 443
+    # AI/ML ecosystem
+    - host: anthropic.com
+      port: 443
+    - host: "**.anthropic.com"
+      port: 443
+    - host: openai.com
+      port: 443
+    - host: "**.openai.com"
+      port: 443
+    - host: huggingface.co
+      port: 443
+    - host: "**.huggingface.co"
+      port: 443
+    - host: langchain.com
+      port: 443
+    - host: "**.langchain.com"
+      port: 443
+    - host: langchain-ai.github.io
+      port: 443
+    - host: langgraph.dev
+      port: 443
+    - host: "**.langgraph.dev"
+      port: 443
+    - host: "**.pinecone.io"
+      port: 443
+    - host: "**.weaviate.io"
+      port: 443
+    # Search engines (landing pages, not full crawl)
+    - host: duckduckgo.com
+      port: 443
+    - host: "**.duckduckgo.com"
+      port: 443
+    - host: google.com
+      port: 443
+    - host: "**.google.com"
+      port: 443
+    - host: bing.com
+      port: 443
+    - host: "**.bing.com"
+      port: 443
+    # Cloud / infra docs
+    - host: "**.aws.amazon.com"
+      port: 443
+    - host: "**.docs.aws.amazon.com"
+      port: 443
+    - host: "**.cloud.google.com"
+      port: 443
+    - host: "**.azure.com"
+      port: 443
+    - host: "**.microsoft.com"
+      port: 443
+    - host: "**.cloudflare.com"
+      port: 443
+    - host: "**.vercel.app"
+      port: 443
+    - host: "**.netlify.app"
+      port: 443
+    # Misc dev tools / OSS project homes
+    - host: "**.jetbrains.com"
+      port: 443
+    - host: "**.sourceforge.net"
+      port: 443
+    - host: "**.apache.org"
+      port: 443
+    - host: "**.gnu.org"
+      port: 443
+    - host: "**.freebsd.org"
+      port: 443
+    - host: "**.kernel.org"
+      port: 443
+    binaries:
+    - path: /usr/local/bin/claude
+    - path: /sandbox/.local/share/claude/versions/**
+    - path: /usr/bin/node
   codex:
     name: codex
     endpoints:
