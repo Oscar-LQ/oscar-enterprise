@@ -316,3 +316,142 @@ matches the second slug exactly.
 **`requirements.txt` now pins 54 packages** to the exact versions that worked today, capturing in one pass everything pulled in by Sprint 1 (`langgraph` core), Sprint 3/4 (`httpx` already a transitive), and Sprint 6 (`deepagents`, `langchain` umbrella, `langchain-openrouter`, `langchain-anthropic`, `langchain-google-genai`, plus their transitives — `anthropic`, `google-genai`, `google-auth`, `cryptography`, `cffi`, `wcmatch`, `bracex`, etc.). This is the first time the repo has a pinned dep manifest. Previous sprints (1, 3, 4) did not pin; this sprint's freeze captures their installs retrospectively at exactly the versions still in `/sandbox/.venv`. Reproducing the working state in a fresh venv is now `uv venv --seed --python 3.13 /sandbox/.venv && /sandbox/.venv/bin/pip install -r requirements.txt`.
 
 **Next sprint picks up from:** working Deep Agents end-to-end inside the sandbox at `src/experiments/sprint-06-deep-agents-runs/hello_deep_agent.py`. The chat-model DI seam at `src/llm/chat_model.py` is wired for OpenRouter only; MiniMax-via-`ChatOpenAI` (with `base_url`) is the documented next factory. The middleware stack, planning channel, and `StateBackend` filesystem are now characterised — Sprint 7 onward can begin populating Oscar's organisational structure (General Counsel orchestrator, department heads, specialist sub-agents, functional tools) on top of this foundation. Open follow-ups: (a) `BASE_AGENT_PROMPT` does not by itself induce planning — agents whose work benefits from explicit plan-tracking should say so in their system prompt; (b) LangSmith tracing is silently disabled until we add a key + policy block — defer until a sprint actually wants traces; (c) the `task` tool / general-purpose subagent are always present; future single-agent designs need to either tolerate this or build a stack without `SubAgentMiddleware`; (d) `.env` is git-ignored, so per-provider key state should be sanity-checked at every sprint start (Sprint 6 lost ~15 minutes to a stale-key-from-prior-sprint surprise).
+
+### Sprint 7 — 2026-04-18 — General Counsel + Head of Commercial routing scaffolding
+
+**Numbering note.** The brief was titled "Sprint 6" and referred to the previous log entry as "Sprint 5". In fact, the sprint log skipped the Sprint 5 slot — the previous entry ("Deep Agents runs end-to-end") is labelled Sprint 6. ADR 009, `src/experiments/sprint-06-deep-agents-runs/`, and the `requirements.txt` freeze all reference that Sprint 6 by number and path, so retroactively renaming it to Sprint 5 would cascade into the code and historical record. Instead, this entry is called Sprint 7 — keeping historical artefacts stable and the log append-only. Future sprints are invited to continue from Sprint 8.
+
+**Goal:** Begin building Oscar's in-house legal org chart on top of the Deep Agents substrate proven last sprint. Scope deliberately narrow: one General Counsel (orchestrator), one department head (Head of Commercial), one yes/no routing decision. Two test invocations exercise the routing pattern. Not a capability — the point is the routing pattern, not the answer quality. Per the brief, the ancestry is Sprint 5/6 (this sprint's framing) proving Deep Agents runs, and Sprint 7 proving the org-chart scaffolding routes.
+
+**Done:** `src/experiments/sprint-07-gc-commercial-routing/gc_and_commercial.py` runs end-to-end and both test invocations produce the expected routing behaviour:
+
+* **Invocation 1 ("NDA review")** — GC classified as commercial and delegated to Head of Commercial via the `task` tool (fired exactly once, with `subagent_type='head-of-commercial'` confirmed by probing the tool-call args). Head of Commercial returned a MiniMax-M2.7 response; GC synthesised a final reply asking for the NDA text. Trace has 4 messages: HumanMessage → AIMessage(task call) → ToolMessage(subagent output) → AIMessage(final synthesis).
+* **Invocation 2 ("Companies House filing")** — GC classified as company-secretarial and replied "this department is not yet staffed" verbatim, no delegation, zero tool calls. Trace has 2 messages: HumanMessage → AIMessage(final).
+
+Binary success criterion met: `task` fired once in invocation 1 and zero times in invocation 2; invocation 1's final response is a synthesis over the subagent's output; invocation 2 acknowledges the department is not staffed.
+
+**Chat-model seam extension for MiniMax (ADR 011).** `src/llm/chat_model.py` gained a `_minimax_factory` using `init_chat_model("openai:MiniMax-M2.7", base_url="https://api.minimax.io/v1", api_key=...)` — the carry-forward from Sprint 6's "MiniMax via this seam needs another factory and probably `langchain-openai` with a `base_url` override (no native `langchain-minimax` package exists)". The seam's `get_chat_model()` signature also grew an `env_prefix=` keyword (default `OSCAR_LLM` for backward compat with Sprint 6's experiment) and a new pure-DI `build_chat_model(*, provider, model, api_key)` entry point. Same `_FACTORIES` dispatch pattern as before; adding a provider remains one dict entry plus one small factory.
+
+Trivial verification — `get_chat_model(env_prefix="OSCAR_LLM_HEAD_OF_COMMERCIAL")` on `"Reply with exactly: ok"` returned (verbatim, including the `<think>` block):
+
+```
+<think>
+The user says: "Reply with exactly: ok". This seems like a request for the assistant to output exactly the string "ok". This is a short request. There's no policy violation; it's trivial. The user wants the assistant to output exactly "ok". There's no problem. There's no hidden content. So we comply.
+
+We must produce exactly "ok". Nothing else. So output "ok".
+</think>
+
+ok
+```
+
+The `<think>` wrapper is MiniMax-M2.7's standard OpenAI-compat behaviour (Sprint 3 surprise 1). Tool calling still works around it.
+
+**The two agent definitions (brief summary):**
+
+* **General Counsel** — `create_deep_agent(model=<OpenRouter GPT-5.4>, tools=[], system_prompt=GC_SYSTEM_PROMPT, subagents=[head_of_commercial])`. System prompt says: you are the GC of an in-house legal function; your job is to classify inbound work and delegate to the right department head via `task`; only `head-of-commercial` is staffed; for anything else reply "this department is not yet staffed" without delegating.
+* **Head of Commercial** — a `SubAgent` dict with `name='head-of-commercial'`, `tools=[]`, `model=<MiniMax-M2.7 via the chat-model seam>`, and a system prompt describing the role as responsible for commercial contract work (NDAs, MSAs, SaaS, amendments) with instructions to respond with a short string describing what it would do rather than performing the work.
+
+Model allocation rationale is in ADR 010 (per the brief's mandate): GC = frontier reasoning model (orchestration is reasoning-heavy and low-volume — spend tokens here), specialist = capable-but-cheaper (higher-volume, narrower-scope; cheaper models hold up at per-role eval), no agent hardcodes its own model, per-role env-var triples carry the DI injection. Two concrete prefixes this sprint: `OSCAR_LLM_GENERAL_COUNSEL_*` and `OSCAR_LLM_HEAD_OF_COMMERCIAL_*`. Future roles extend the same pattern.
+
+**The two test invocations — verbatim outputs (captured from a second run for clean message numbering; LLM wording varies between runs, routing does not).**
+
+*Invocation 1 — "Please review this NDA against our standard position":*
+
+```
+msg#0 HumanMessage
+  Please review this NDA against our standard position
+
+msg#1 AIMessage
+  tool_call name='task'
+  args={'description': "Review the user's NDA against our standard
+  position. Identify key deviations from a typical company-friendly
+  standard NDA position, flag material legal/commercial risks, and
+  provide a concise issues list with recommended fallback positions
+  and negotiation points. If the actual NDA text is not available in
+  the prompt, state exactly what is needed from the user to perform
+  the review and keep it minimal.",
+        'subagent_type': 'head-of-commercial'}
+  content: ""
+
+msg#2 ToolMessage name='task'
+  <think>
+  The user is asking me to review an NDA (Non-Disclosure Agreement)
+  against their standard position. However, I don't see any NDA text
+  provided in the prompt. I need to check if there's a file path
+  provided or if I need to ask for the actual NDA text.
+
+  Let me look at what information I have:
+  - The user wants me to review "the user's NDA" against "our
+    standard position"
+  - They want me to identify deviations, flag risks, and provide
+    negotiation points
+
+  But there's no NDA text provided and no file path given. I should
+  ask the user to provide the NDA text or file path, but keep the
+  request minimal as instructed.
+  </think>
+
+  To perform this NDA review, I need the following:
+
+  1. **The counterparty's NDA** — please provide the file path or
+     paste the text directly.
+  2. **Your company's standard NDA template** — file path or text
+     for comparison.
+
+  Once you share these, I'll analyze deviations from your standard
+  position, flag material risks, and provide an issues list with
+  fallback positions and negotiation points.
+
+msg#3 AIMessage (final)
+  Please send:
+  1. the NDA to review, and
+  2. your standard NDA/template or playbook position.
+
+  If you only have one of those, send that and I'll review against
+  a typical market-standard fallback.
+```
+
+*Invocation 2 — "Please file our annual return at Companies House":*
+
+```
+msg#0 HumanMessage
+  Please file our annual return at Companies House
+
+msg#1 AIMessage (final)
+  this department is not yet staffed
+```
+
+Tool-call counts:
+* NDA invocation: `task: 1` (routing to `head-of-commercial` — confirmed via probe).
+* Companies House invocation: no tool calls.
+
+Assertions in `main()` pass: `task == 1` and `task == 0` for the two invocations; `"not yet staffed"` is in the Companies House final response. `sprint-07: routing scaffolding end-to-end run succeeded.`
+
+**Routing verdict:** working as expected in both cases. Classification is decided by GPT-5.4 in the GC node; for the NDA, it selected the staffed `head-of-commercial` subagent; for the filing, it declined to delegate and returned the exact canonical refusal. No crossover — the GC never routed the Companies House request to a wrong department, and never refused the NDA.
+
+**Surprises, flagged honestly:**
+
+1. **`tools=[]` on a SubAgent does NOT mean no tools — it means no *extra* tools.** Head of Commercial still received the default middleware stack (TodoListMiddleware, FilesystemMiddleware, SubAgentMiddleware, SummarizationMiddleware, etc.) per the `SubAgent` spec's documented inheritance, so it had `write_todos`, `ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`, and (transitively) `task` available. Our system prompt said "you have no tools and no sub-agents" and MiniMax complied by not calling any — but the tools were reachable. This is the SubAgent-level instance of Sprint 6 surprise 3 ("`SubAgentMiddleware` is unconditional"): the middleware stack is baked in by `create_deep_agent` and only overridable by constructing a custom stack without those middlewares. For routing tests this doesn't matter; for future agents expected to be genuinely toolless, the enforcement is prompt-level, not framework-level.
+
+2. **The brief said "short string, one or two sentences" — Head of Commercial produced a markdown-formatted multi-section response.** The system prompt requested brevity; MiniMax-M2.7 gave it structure anyway. Routing still worked. Future sprints that need terse sub-agent output will likely need either a tighter prompt, a ResponseFormat constraint (the `SubAgent` spec supports `response_format` for structured output), or both. Not worth polishing this sprint per brief's "No polish on the system prompts — short and directional is fine".
+
+3. **MiniMax `<think>...</think>` blocks surface inside the `ToolMessage` content returned to GC.** GC's synthesiser ignored the `<think>` text in its final reply — it summarised around it correctly. But any downstream consumer of sub-agent outputs (e.g. an audit log, an automated test that compares ToolMessage content) will see the chain-of-thought inline. The `reasoning_split: True` knob noted in Sprint 3 surprise 1 is still the documented mitigation, still deferred.
+
+4. **LLM non-determinism is visible between runs.** Two full runs of the same script produced different final wordings — `"Please paste the NDA text or upload the NDA file. Without the document, I can't review it against the standard position."` on one run vs. `"Please send: 1. the NDA to review, and 2. your standard NDA/template or playbook position. If you only have one of those, send that and I'll review against a typical market-standard fallback."` on another. The routing decision (task fires in invocation 1, doesn't in invocation 2) and the refusal string (invocation 2's "this department is not yet staffed") were stable across runs. Worth remembering when a future sprint wants to assert on exact wording — prefer routing-shape assertions.
+
+5. **`subagent_type` dispatch is the routing mechanism, not a `route` arg or similar.** The `task` tool's schema includes `description` (free-text brief for the sub-agent) and `subagent_type` (which named subagent to dispatch to). GC picked `'head-of-commercial'` for the NDA — exactly the name we gave the SubAgent spec. If GC had called `task` with `subagent_type='general-purpose'` (the latent default), routing would have silently succeeded into the wrong subagent, and the sprint-success check would have passed (task == 1). The guard is prompt-level: the system prompt names the only staffed subagent. Future sprints with multiple staffed heads will need either more explicit prompt guidance or programmatic routing outside the LLM.
+
+6. **No policy widenings needed.** `api.minimax.io:443` was already allowed (Sprint 3 commit `d931511`, live policy v7), `openrouter.ai:443` was already allowed (Sprint 4 commit `a7b1f51`, live policy v8), PyPI egress was already allowed (Sprint 1). `pip install langchain-openai` and its transitives (`openai`, `tiktoken`, `regex`, `tqdm`) completed cleanly. No 403 at any stage.
+
+**ADRs written this sprint:**
+
+* **ADR 010 — Per-Agent Model Allocation.** Frontier-at-the-top, capable-but-cheaper-below principle (from PROJECT.md § Model Allocation) given its first concrete implementation: GC = `openai/gpt-5.4` via OpenRouter, Head of Commercial = `MiniMax-M2.7` direct. Per-role env-var triples as the DI mechanism. Rejects single-triple and single-YAML alternatives with explicit revisit triggers.
+* **ADR 011 — MiniMax in the BaseChatModel Seam via OpenAI-Compat `base_url` Override.** Resolves the "deferred" con in ADR 009's consequences. Uses `init_chat_model("openai:...", base_url="https://api.minimax.io/v1", api_key=...)` to stay consistent with the OpenRouter factory's construction entry point. `langchain-openai` is now a permanent dependency.
+
+**`docs/secrets.md` created and populated.** Seeded with every env var the project currently expects, grouped by required/declared-but-unused/non-env; columns for purpose, required-for, introduced-sprint, last-touched-sprint. Maintenance rule: every sprint that adds/removes/materially-changes an env var updates the table in the same commit. Direct response to Sprint 6 surprise 1's complaint about silent `.env` drift.
+
+**`.env.example` updated** to document the three triples (default + per-role) with inline pointers to `docs/secrets.md` and ADR 010 / ADR 011.
+
+**`requirements.txt` re-frozen.** `langchain-openai 1.1.14`, `openai 2.32.0`, `tiktoken 0.12.0`, `regex 2026.4.4`, `tqdm 4.67.3` added (Sprint 6 had transiently installed them for diagnosis and uninstalled). File grew from 54 to 59 pinned packages. Fresh-venv reproduction command unchanged: `uv venv --seed --python 3.13 /sandbox/.venv && /sandbox/.venv/bin/pip install -r requirements.txt`.
+
+**Next sprint picks up from:** a two-role GC+Commercial routing scaffold at `src/experiments/sprint-07-gc-commercial-routing/gc_and_commercial.py`, with per-role DI slots in `.env` and an updated chat-model seam supporting both OpenRouter and MiniMax. Natural directions: (a) stand up a second department head (Company Secretariat, Data Protection, Employment, Property, or Litigation) to stress the routing pattern with more than one staffed option; (b) introduce the first functional agent within Commercial (a document-operation agent — comment-responder, accept/reject reasoner, defined-terms auditor) to prove the within-department toolkit shape; (c) attach a real document (NDA + playbook) and see whether the routing still lands on Commercial and whether Commercial can produce anything useful. Open follow-ups carried over: (i) `<think>` reasoning-trace stripping for structured consumers (Sprint 3 surprise 1, still deferred); (ii) LangSmith tracing needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent in every agent — including subagents — continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity is hard to get from a short prompt alone — a `response_format` or tighter prompt scaffolding likely needed before the substantive capability sprints.
