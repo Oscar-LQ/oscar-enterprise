@@ -30,7 +30,10 @@ Provider support
 * ``minimax`` — uses ``langchain-openai`` 's ``ChatOpenAI`` pointed at
   ``https://api.minimax.io/v1`` via the ``base_url`` kwarg. MiniMax has no
   dedicated LangChain integration package; the OpenAI-compatible route is
-  the documented carry-forward from Sprint 5.
+  the documented carry-forward from Sprint 5. ``reasoning_split=True`` is
+  passed via ``extra_body`` so MiniMax returns the chain-of-thought in a
+  separate ``reasoning_details`` field rather than inlined in
+  ``message.content`` inside ``<think>...</think>`` tags (ADR 012).
 
 Adding a provider: register a factory in ``_FACTORIES`` below. The factory
 receives ``model`` and ``api_key`` as keyword arguments and must return a
@@ -58,6 +61,7 @@ def _minimax_factory(*, model: str, api_key: str) -> BaseChatModel:
         f"openai:{model}",
         base_url=_MINIMAX_BASE_URL,
         api_key=api_key,
+        extra_body={"reasoning_split": True},
     )
 
 

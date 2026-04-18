@@ -455,3 +455,110 @@ Assertions in `main()` pass: `task == 1` and `task == 0` for the two invocations
 **`requirements.txt` re-frozen.** `langchain-openai 1.1.14`, `openai 2.32.0`, `tiktoken 0.12.0`, `regex 2026.4.4`, `tqdm 4.67.3` added (Sprint 6 had transiently installed them for diagnosis and uninstalled). File grew from 54 to 59 pinned packages. Fresh-venv reproduction command unchanged: `uv venv --seed --python 3.13 /sandbox/.venv && /sandbox/.venv/bin/pip install -r requirements.txt`.
 
 **Next sprint picks up from:** a two-role GC+Commercial routing scaffold at `src/experiments/sprint-07-gc-commercial-routing/gc_and_commercial.py`, with per-role DI slots in `.env` and an updated chat-model seam supporting both OpenRouter and MiniMax. Natural directions: (a) stand up a second department head (Company Secretariat, Data Protection, Employment, Property, or Litigation) to stress the routing pattern with more than one staffed option; (b) introduce the first functional agent within Commercial (a document-operation agent — comment-responder, accept/reject reasoner, defined-terms auditor) to prove the within-department toolkit shape; (c) attach a real document (NDA + playbook) and see whether the routing still lands on Commercial and whether Commercial can produce anything useful. Open follow-ups carried over: (i) `<think>` reasoning-trace stripping for structured consumers (Sprint 3 surprise 1, still deferred); (ii) LangSmith tracing needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent in every agent — including subagents — continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity is hard to get from a short prompt alone — a `response_format` or tighter prompt scaffolding likely needed before the substantive capability sprints.
+
+### Sprint 8 — 2026-04-18 — Clean MiniMax `<think>` pollution at the chat-model seam
+
+**Goal:** Stop MiniMax-M2.7's chain-of-thought wrapper (`<think>...</think>`) from landing inline in sub-agent `ToolMessage.content` in the orchestrator's message history (Sprint 3 surprise 1 → Sprint 7 surprise 3). Primary mechanism: MiniMax's native `reasoning_split=True` parameter. Fallback (only if primary fails): tag stripping. Targeted fix at the seam, not a restructuring.
+
+**Done:** Primary fix applied and verified. `src/llm/chat_model.py::_minimax_factory` now passes `extra_body={"reasoning_split": True}` to `init_chat_model`; the kwarg flows through `ChatOpenAI.extra_body` → OpenAI SDK `extra_body` → MiniMax HTTP payload; MiniMax returns `message.content` clean and `message.reasoning_details` separate; LangChain drops `reasoning_details` during message conversion; `AIMessage.content` is clean; Deep Agents' `task` tool picks up `.text.rstrip()` and builds a clean `ToolMessage`. Sprint 7's NDA re-run confirms: `contains <think> or </think>: False` in the ToolMessage returned to the General Counsel. Sprint 7's Companies House test is unchanged (no sub-agent called, so no seam traffic to fix).
+
+---
+
+**Research findings (pre-code note).**
+
+*A — MiniMax `reasoning_split`:* per MiniMax's own docs (`platform.minimax.io/docs/guides/text-m2-function-call`, reached via WebSearch — the page itself was policy-blocked), setting `reasoning_split=True` on the request causes the response to split: `response.choices[0].message.content` holds the clean answer; `response.choices[0].message.reasoning_details[0]['text']` holds the thinking. MiniMax's own guidance recommends preserving the `<think>reasoning_content</think>` wrapper across multi-turn conversations to keep Interleaved Thinking coherent. **We are not implementing that preservation this sprint** — see "non-decision" below and ADR 012.
+
+*B — LangChain / LangGraph message handling:*
+- `extra_body` is a documented kwarg on `BaseChatOpenAI` (`langchain_openai/chat_models/base.py:795`), passed through in `_default_params` at line 1128 to the OpenAI SDK. `reasoning_split=True` therefore reaches MiniMax as expected.
+- `_convert_dict_to_message` at line 188 only extracts `content`, `function_call`, `tool_calls`, `audio`. `reasoning_content` / `reasoning_details` are silently dropped (class docstring at line 574-576 is explicit: "Non-standard response fields added by third-party providers … are not extracted"). Multiple open LangChain issues track this (#35059 vLLM/DeepSeek, #35901 preservation proposal, #34706 o1/grok, #31326 reasoning_content). The LangChain PR #35530 noted in the brief as bringing `langchain-perplexity`'s tag-stripper to core was not merged into any module we have installed.
+- `langchain-perplexity` is **not installed** in our venv (confirmed via directory listing of `/sandbox/.venv/lib/python3.13/site-packages/`); its tag-stripping output parser is unavailable by that path.
+
+*C — Deep Agents sub-agent return flow:* read from installed source at `/sandbox/.venv/lib/python3.13/site-packages/deepagents/middleware/subagents.py`. The `task` tool's success path (`_return_command_with_state_update`, lines 374-402) does exactly one thing with content: line 396, `content = result["messages"][-1].text.rstrip() if result["messages"][-1].text else ""`, then line 401, `ToolMessage(content, tool_call_id=tool_call_id)`. No extraction, no stripping, no structured-field handling — just the last message's `.text`. This means **the fix must land before the sub-agent's last `AIMessage` is built** (i.e. at the chat-model seam) or the content will arrive polluted into the parent's history. A post-hoc fix after the task tool would require wrapping the task tool itself (more invasive, more surface area). The chat-model seam is the correct layer.
+
+---
+
+**Fix strategy applied: primary.** `reasoning_split=True` was the primary mechanism in the brief and it worked end-to-end. No fallback needed. The one-line change is:
+
+```python
+# src/llm/chat_model.py::_minimax_factory
+return init_chat_model(
+    f"openai:{model}",
+    base_url=_MINIMAX_BASE_URL,
+    api_key=api_key,
+    extra_body={"reasoning_split": True},  # ← new
+)
+```
+
+---
+
+**Empirical verification — direct chat-model probe (post-fix).**
+
+```text
+CHAT MODEL: ChatOpenAI
+extra_body: {'reasoning_split': True}
+type: AIMessage
+content: 'ok'
+additional_kwargs keys: ['refusal']
+response_metadata keys: ['token_usage', 'model_provider', 'model_name',
+                         'system_fingerprint', 'id', 'finish_reason', 'logprobs']
+```
+
+Compare Sprint 7 verbatim for the same prompt (MiniMax chat-model seam direct verification):
+
+```text
+<think>
+The user says: "Reply with exactly: ok". This seems like a request for the
+assistant to output exactly the string "ok". This is a short request.
+There's no policy violation; it's trivial. [...]
+</think>
+
+ok
+```
+
+`AIMessage.content` is now `'ok'`. `reasoning_details` is not surfaced on `additional_kwargs` (dropped by `_convert_dict_to_message`), which is what we expect and accept this sprint.
+
+---
+
+**Verbatim ToolMessage content — Sprint 7 NDA re-run, post-fix.**
+
+```
+**Document Missing**
+
+No NDA text or file has been provided for review. To proceed, please upload or paste the NDA you would like me to analyse against our standard position. Once received, I will:
+
+- Identify key deviations from our standard in-house NDA terms
+- Flag legal and commercial risks
+- Provide a concise issue list with recommended fallback positions
+```
+
+Programmatic check: `contains <think> or </think>: False`. Compare Sprint 7's verbatim pre-fix ToolMessage (PROJECT.md lines 377-403), which opened with a multi-paragraph `<think>...</think>` block before the user-facing content.
+
+Routing assertions still pass: `task == 1` for NDA invocation, `task == 0` for Companies House invocation, `"not yet staffed"` present in the Companies House final response. Sprint 7's binary routing check is unchanged; Sprint 8's binary check (`<think>`-free ToolMessage) now also passes.
+
+---
+
+**Where the code change landed.** `src/llm/chat_model.py::_minimax_factory`, one new kwarg (`extra_body={"reasoning_split": True}`) on the `init_chat_model` call. The module docstring and the fallback note now reference ADR 012. Nothing else in the repo changed: no new files, no middleware, no post-processing, no dependency changes, no routing changes, no system-prompt changes, no policy changes. Fix radius is one line of behavioural code plus the ADR.
+
+**Response shape produced by `reasoning_split=True` through the LangChain path:** `AIMessage.content` = clean string (e.g. `'ok'`); `AIMessage.additional_kwargs` = `{'refusal': None}` (no reasoning fields); `AIMessage.response_metadata` carries usage/model/finish_reason as before. MiniMax's `reasoning_details` field is dropped by `_convert_dict_to_message` before the `AIMessage` is constructed. This matches the research prediction.
+
+---
+
+**ADR written this sprint:** ADR 012 — *MiniMax `reasoning_split=True` via `extra_body`*. Captures the decision to enable `reasoning_split` at the factory, and the explicit non-decision on multi-turn `reasoning_details` preservation (what `reasoning_details` contains when populated, why we are discarding it today, and the three concrete changes that would be needed if a future sprint introduces multi-turn specialist conversations). Partially amends ADR 011 (whose Con #2 claimed `reasoning_split` was not reachable through `ChatOpenAI` — empirically, it is; the non-reachable thing is non-standard *response* fields, which LangChain drops by design).
+
+---
+
+**Surprises, flagged honestly:**
+
+1. **`reasoning_details` preservation would need three separate plumbing changes, not one.** Research made clear that even if we did want multi-turn preservation, it is not a single-point extension of today's fix. LangChain drops the field at message-conversion time, Deep Agents' `task` tool only forwards `.text.rstrip()`, and the outgoing payload would need the `<think>...</think>` wrapper reconstructed from the split form (MiniMax expects the wrapper form on inbound, not the split form). ADR 012 records the three steps explicitly so a future sprint that needs this does not re-derive the plan.
+
+2. **ADR 011's "not reachable" claim was wrong.** ADR 011 Con #2 said "MiniMax-specific features only exposed on the native endpoint (`reasoning_split`, MiniMax-native tool-call shape) are not reachable through `ChatOpenAI`." The `reasoning_split` half is wrong: `extra_body` makes provider-specific *request* parameters reachable. The tool-call-shape half is likely still correct (not tested this sprint — not needed). ADR 012 records the amendment; ADR 011 itself is append-only and stays as-is.
+
+3. **Sprint 7 surprise 3's deferred fix was a one-line change.** Surprise 3 in Sprint 7's log framed `<think>` stripping as a follow-up likely to require either a `reasoning_split` knob or a stripping utility. It turned out to require neither stripping utility nor any kind of middleware — just the knob, passed through the documented `extra_body` channel. When a deferred surprise turns out to be one line of code, that is worth logging: future-us should prefer trying the native knob before reaching for post-processing.
+
+4. **Brief's mention of `langchain-perplexity.output_parsers` / LangChain PR #35530 turned out to be moot in our venv.** Neither is installed; the PR is not merged into any module we have. The fallback plan's "use LangChain's existing utility if installed" branch was unreachable from the start. Not a problem — the primary path worked. Recorded because the brief treated the existence of an installed utility as plausible, and it wasn't.
+
+**No policy widenings needed.** `api.minimax.io:443` already allowed (Sprint 3 policy v7). `platform.minimax.io` is not in the allow list and returned 403 on WebFetch — worked around by using WebSearch to retrieve the relevant information from the MiniMax docs page and from surfaced GitHub issues / vLLM recipes. Same pattern as Sprint 2's `docs.langchain.com` block. Not proposing to widen policy for a doc lookup we only needed once.
+
+**No new dependencies.** `requirements.txt` unchanged (still 59 packages).
+
+**Next sprint picks up from:** Sub-agent responses flowing through the MiniMax chat-model seam now land clean (no `<think>` pollution) in orchestrator history. The Sprint 7 scaffold is the starting point as before — its follow-up directions (second department head, first functional agent within Commercial, real document attachment) are all still open. Carry-forwards from Sprint 7 remain: (i) `<think>` handling is **resolved** for MiniMax via this sprint's primary fix; for multi-turn specialist conversations, ADR 012's three plumbing steps will be needed (deferred until a sprint requires it); (ii) LangSmith tracing still needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity still hard to get from a short prompt alone — unchanged.
