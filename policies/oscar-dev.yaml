@@ -136,6 +136,14 @@ network_policies:
     binaries:
     - path: /usr/local/bin/claude
     - path: /usr/bin/gh
+  github_ssh:
+    name: github-ssh
+    endpoints:
+    - host: github.com
+      port: 22
+    binaries:
+    - path: /usr/bin/ssh
+    - path: /usr/bin/nc.openbsd
   github_ssh_over_https:
     name: github-ssh-over-https
     endpoints:
