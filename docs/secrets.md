@@ -32,6 +32,9 @@ the table below in the same commit. The "last touched" date answers
 | `OSCAR_LLM_HEAD_OF_COMMERCIAL_PROVIDER` | Per-role DI slot (ADR 010): which provider Head of Commercial uses. Read by `get_chat_model(env_prefix="OSCAR_LLM_HEAD_OF_COMMERCIAL")`. | Sprint 7 Head-of-Commercial subagent. | Sprint 7 | Sprint 7 |
 | `OSCAR_LLM_HEAD_OF_COMMERCIAL_MODEL` | Per-role DI slot: specialist model id (this sprint `MiniMax-M2.7`). | Sprint 7 Head-of-Commercial. | Sprint 7 | Sprint 7 |
 | `OSCAR_LLM_HEAD_OF_COMMERCIAL_API_KEY` | Per-role DI slot: API key for Head of Commercial's provider. | Sprint 7 Head-of-Commercial. | Sprint 7 | Sprint 7 |
+| `OSCAR_LLM_ACCEPT_REJECT_REASONER_PROVIDER` | Per-role DI slot (ADR 010): provider for the accept/reject functional specialist. Read by `get_chat_model(env_prefix="OSCAR_LLM_ACCEPT_REJECT_REASONER")`. | Sprint 9 accept-reject-reasoner specialist. | Sprint 9 | Sprint 9 |
+| `OSCAR_LLM_ACCEPT_REJECT_REASONER_MODEL` | Per-role DI slot: specialist model id for accept/reject reasoning (this sprint `MiniMax-M2.7`). | Sprint 9 accept-reject-reasoner. | Sprint 9 | Sprint 9 |
+| `OSCAR_LLM_ACCEPT_REJECT_REASONER_API_KEY` | Per-role DI slot: API key for the accept/reject specialist's provider. Typically matches the Head of Commercial key when both run on MiniMax. | Sprint 9 accept-reject-reasoner. | Sprint 9 | Sprint 9 |
 
 ## Declared but not yet used
 

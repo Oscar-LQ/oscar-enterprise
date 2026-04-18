@@ -562,3 +562,191 @@ Routing assertions still pass: `task == 1` for NDA invocation, `task == 0` for C
 **No new dependencies.** `requirements.txt` unchanged (still 59 packages).
 
 **Next sprint picks up from:** Sub-agent responses flowing through the MiniMax chat-model seam now land clean (no `<think>` pollution) in orchestrator history. The Sprint 7 scaffold is the starting point as before — its follow-up directions (second department head, first functional agent within Commercial, real document attachment) are all still open. Carry-forwards from Sprint 7 remain: (i) `<think>` handling is **resolved** for MiniMax via this sprint's primary fix; for multi-turn specialist conversations, ADR 012's three plumbing steps will be needed (deferred until a sprint requires it); (ii) LangSmith tracing still needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity still hard to get from a short prompt alone — unchanged.
+
+### Sprint 9 — 2026-04-18 — Accept/reject reasoner (first functional specialist under Head of Commercial)
+
+**Goal:** Populate the Head of Commercial from Sprint 7 with its first *functional* agent — a specialist that takes a single proposed contract markup plus a playbook rule and returns `accept | reject | counter`. End-to-end routing: General Counsel → Head of Commercial → accept-reject-reasoner. First sprint in which Oscar does any legal work, even trivially. Rule GL-001 (Governing Law: England and Wales) is hardcoded in the specialist's system prompt; persistent playbook storage deferred. Three synthetic test invocations exercise the three decision paths.
+
+**Done:** `src/experiments/sprint-09-accept-reject-specialist/gc_commercial_acceptreject.py` runs end-to-end. All three test invocations route through `head-of-commercial` (observed in GC's `task()` tool-call args), HOC delegates to `accept-reject-reasoner`, specialist returns structured JSON that parses to the expected decision, and GC synthesises a coherent user-facing response.
+
+```
+SPRINT 9 VERDICT
+  accept-ew-unchanged    routed=True structured=True decision='accept'  (expected 'accept')  counter_language_ok=True  OK=True
+  reject-delaware        routed=True structured=True decision='reject'  (expected 'reject')  counter_language_ok=True  OK=True
+  counter-scotland       routed=True structured=True decision='counter' (expected 'counter') counter_language_ok=True  OK=True
+sprint-09: accept/reject specialist end-to-end run succeeded.
+```
+
+---
+
+**Research findings (pre-code — became ADRs 013, 014, 016).**
+
+*A — Structured output from MiniMax through LangChain.* Three options were on the table: JSON-in-prompt, `ChatOpenAI.with_structured_output(..., method="json_schema")`, and `SubAgent.response_format = <Pydantic class>`. Empirical probe:
+
+- `with_structured_output(..., method="json_schema")` **fails** against MiniMax via OpenAI-compat — `pydantic_core.ValidationError: Invalid JSON`, MiniMax returned freeform markdown when OpenAI's native `response_format={type: "json_schema"}` was in the request. MiniMax's OpenAI-compat shim does not enforce the json_schema contract.
+- `with_structured_output(..., method="function_calling")` **succeeds** — binding the Pydantic class as a tool with tool_choice produces validated instances across all three Rule GL-001 test cases.
+- Reading `langchain/agents/factory.py:499-539, 1199-1209`: `_supports_provider_strategy(model, tools)` returns `False` for MiniMax-M2.7 (no `profile.structured_output`, not in `FALLBACK_MODELS_WITH_STRUCTURED_OUTPUT = ["grok","gpt-5","gpt-4.1","gpt-4o","gpt-oss","o3-pro","o3-mini"]`). `AutoStrategy` auto-picks `ToolStrategy` — which is the function-calling path that works. No prompt-side JSON convention or manual retry wrapper required; `ToolStrategy.handle_errors=True` gives graceful retry on malformed tool calls out of the box.
+- Decision shape: Pydantic `AcceptRejectDecision(decision: Literal['accept','reject','counter'], reason: str, counter_language: str = "")`. `counter_language` is a required string (empty when not counter) rather than `Optional[str]` — optional fields are not in the JSON schema's `required` list and MiniMax routinely omits them even when the prompt asks for them.
+- ADR 013 records the choice.
+
+*B — Deep Agents three-level delegation.* Read from installed source at `/sandbox/.venv/lib/python3.13/site-packages/deepagents/middleware/subagents.py:25-127`. The `SubAgent` TypedDict supports only `name`, `description`, `system_prompt`, `tools`, `model`, `middleware`, `interrupt_on`, `skills`, `permissions`, `response_format` — **no `subagents` field**. Flat-parent-with-many-children is what `SubAgent` encodes. But (`subagents.py:130-159`) `CompiledSubAgent` takes an arbitrary `runnable`, and `create_deep_agent(...)` returns a compiled `CompiledStateGraph`. So the nested shape is: build Head of Commercial with its own `create_deep_agent(subagents=[specialist_spec])`, then wrap the compiled graph as `{"name": "head-of-commercial", "description": "...", "runnable": hoc_graph}` when plugging into GC. `SubAgentMiddleware._get_subagents()` (`subagents.py:538-542`) preserves the `runnable` as-is. Arbitrary depth works by induction. ADR 014 records the pattern.
+
+*C — Head of Commercial's specialist-routing prompt.* `SubAgentMiddleware` auto-appends "Available subagent types" to the system prompt (`subagents.py:522-524`), and the `TASK_SYSTEM_PROMPT` covers generic when-to-use-task guidance. The custom HOC prompt therefore only needs (1) role line, (2) routing table from input shape to specialist name, (3) relay instructions for the specialist's JSON back to the orchestrator. Naming the specialist by its `name` field (not its description) because `task` dispatches on `subagent_type`. ADR 016 records the pattern.
+
+---
+
+**Specialist definition (`accept-reject-reasoner`, brief summary).**
+
+- **Model:** MiniMax-M2.7 (specialist tier, ADR 010), via `OSCAR_LLM_ACCEPT_REJECT_REASONER_*`.
+- **Tools:** none beyond the default Deep Agents middleware stack.
+- **Response format:** `AcceptRejectDecision` Pydantic BaseModel bound via `SubAgent["response_format"]`. `AutoStrategy` → `ToolStrategy` auto-selected (ADR 013). `ToolStrategy.handle_errors=True` retries on malformed tool calls.
+- **System prompt (verbatim):** opens with an *output-discipline* preamble forcing exactly one tool call to the `AcceptRejectDecision` tool (no prose, no markdown fences), then encodes Rule GL-001 as a three-step ordered procedure covering accept / counter / reject paths. Full text in `gc_commercial_acceptreject.py:ACCEPT_REJECT_SYSTEM_PROMPT`.
+- **Contract to the parent:** Deep Agents' `task` tool (`deepagents/middleware/subagents.py:386-393`) detects `structured_response` in the specialist's result state and serialises via `BaseModel.model_dump_json()` into the parent's `ToolMessage.content` — HOC's trace sees a raw JSON string when discipline holds.
+
+---
+
+**Revised Head of Commercial system prompt (verbatim).**
+
+```
+You are the Head of Commercial in an in-house legal function. You are responsible for commercial contract work — NDAs, MSAs, SaaS agreements, procurement contracts, amendments, and similar.
+
+Staffed specialists under you (subagent names to use with the `task` tool):
+  - accept-reject-reasoner: decides accept / reject / counter on a single proposed contract markup against a playbook rule. Returns a structured JSON decision. Use this whenever an inbound task describes any counterparty position on a contract clause (including "accepted unchanged", "proposed change to X", or "struck through") and a playbook rule applies.
+
+Routing rules (follow strictly):
+  1. If the inbound task contains BOTH (a) a description of the counterparty's position on a single contract clause — whether that position is a proposed change, an acceptance, or a rejection — AND (b) a playbook rule that governs that clause type, you MUST delegate to `accept-reject-reasoner` via the `task` tool. Pass the markup description and the rule to the specialist verbatim; do not paraphrase either. Do not try to decide yourself. "Accepted unchanged" and "no change" still count as a counterparty position — delegate anyway.
+  2. Only if there is no markup description at all, or no rule to apply, respond plainly (one or two sentences) describing what you would do. Do not attempt to perform the work yourself. No other specialists are staffed this sprint.
+
+When `accept-reject-reasoner` returns a structured decision (JSON with `decision`, `reason`, and `counter_language`), relay it back to the General Counsel in plain English. State the decision, include the reason, and include the `counter_language` verbatim when the decision is "counter". Do not invent extra context; the specialist's decision is the answer.
+```
+
+Sprint 7's HOC prompt said "you have no tools and no sub-agents" — removed. The routing-rule item (1) had to be re-tightened once mid-sprint to force delegation on the "accepted unchanged" edge case (see Surprise 1 below) — hence the explicit *"accepted unchanged / no change still count as a counterparty position — delegate anyway"* clause.
+
+---
+
+**The three test invocations — verbatim outputs (full run captured from `/tmp/sprint-09-run-4.log`; LLM wording varies between runs, routing and decision fields are stable).**
+
+*Invocation 1 — "accept-ew-unchanged" (edge case — counterparty confirming, not changing).*
+
+Prompt (verbatim, one line): *Please review this contract markup against our playbook. Rule GL-001 (Governing Law): the client's position is that governing law must be England and Wales. Any counterparty proposal to change governing law should be rejected unless the counter-proposal is to Scotland, Northern Ireland, or Ireland (in which case counter-propose England and Wales with a brief justification). Markup: the counterparty has accepted our proposed governing law of England and Wales without change.*
+
+GC three-level trace summary:
+```
+1. HumanMessage
+2. AIMessage tool_calls=task(['description','subagent_type'='head-of-commercial'])
+3. ToolMessage name='task' <HOC's prose wrap of the specialist's decision>
+4. AIMessage (final synthesis to user)
+```
+
+Specialist structured output (verbatim, from HOC-direct probe):
+```json
+{"decision":"accept","reason":"The counterparty has accepted England and Wales as the governing law, which aligns with the client's position.","counter_language":""}
+```
+
+Final user-facing response (verbatim):
+```
+Accept. Counterparty accepted England and Wales unchanged, which is fully compliant with GL-001.
+
+Suggested response language: No response needed — the clause stands as proposed.
+```
+
+*Invocation 2 — "reject-delaware" (main test of the reject path).*
+
+Prompt: as above with markup replaced by *the counterparty wants to change governing law from England and Wales to Delaware.*
+
+GC trace summary: identical shape — one `task` call to `head-of-commercial`, one prose ToolMessage back, one AIMessage final.
+
+Specialist structured output (verbatim):
+```json
+{"decision":"reject","reason":"Delaware is not an acceptable jurisdiction under GL-001; the client requires governing law to be England and Wales.","counter_language":""}
+```
+
+Final user-facing response (verbatim):
+```
+Reject.
+
+Rationale: under GL-001, governing law must remain England and Wales. A change to Delaware is outside the permitted exceptions, so it should be rejected rather than counter-proposed.
+
+Suggested response to counterparty:
+> Thank you for your proposal. Unfortunately, we are unable to accept Delaware as the governing law. Our position is that the agreement must remain governed by the laws of England and Wales. Please revert the clause accordingly.
+```
+
+*Invocation 3 — "counter-scotland" (tests the counter path + `counter_language` generation).*
+
+Prompt: *…Markup: the counterparty wants to change governing law from England and Wales to Scotland.*
+
+GC trace summary: identical shape.
+
+Specialist structured output (verbatim):
+```json
+{"decision":"counter","reason":"The counterparty proposes Scotland, which is on the acceptable shortlist, so we counter-propose England and Wales as the governing law.","counter_language":"The governing law shall be England and Wales, as this jurisdiction provides certainty and familiarity for both parties and aligns with our standard contractual framework."}
+```
+
+Final user-facing response (verbatim):
+```
+Counter.
+
+Rationale: under GL-001, Scotland falls within the exception set where we do not outright reject, but we still counter-propose England and Wales.
+
+Suggested markup response:
+"We maintain our position that governing law should be England and Wales, as this provides the certainty and legal framework our client requires."
+```
+
+All three decisions match expected outcomes and reasoning is coherent. The GC-level final response in each case names the right decision and surfaces a usable counterparty reply (empty for accept, fresh language for reject and counter). The specialist's JSON parses cleanly in all three cases and `counter_language` is non-empty only on the counter case.
+
+---
+
+**Iteration history — what took more than one pass.**
+
+The sprint budgeted ≤2 iterations on prompts if the specialist was unreliable. Two iterations were spent:
+
+* *Iteration 1 — initial HOC + specialist prompts.* First three-level run: routing, reject and counter ended correctly; the accept case didn't reach the specialist because HOC reinterpreted "counterparty accepted unchanged" as "no markup to decide on" and answered itself. (Strictly defensible — there is no markup in the narrow sense — but the brief explicitly names this as a test case and expects the specialist to return "accept".)
+* *Iteration 2 — HOC routing rule tightened to "delegate whenever a counterparty position + applicable rule is present, including 'accepted unchanged'".* Accept case now delegates; specialist returns "accept". Plus a specialist-prompt preamble demanding exactly one `AcceptRejectDecision` tool call (no prose, no markdown fences) to tighten the structured-output discipline observed as intermittent in the first run — see Surprise 2 below.
+
+Two consecutive green runs after iteration 2 (`/tmp/sprint-09-run-4.log`, `/tmp/sprint-09-run-5.log`). Iteration budget exhausted — any further prompt-side fragility is a finding, not a fix.
+
+A third change landed mid-sprint but it is a *harness* fix, not a model-side iteration — so not counted against the budget: the JSON extractor was made tolerant of MiniMax's intermittent markdown-code-fence wrapping. More on that in Surprise 2.
+
+---
+
+**Surprises, flagged honestly.**
+
+1. **HOC's first-pass routing was semantically conservative.** On the accept edge case, HOC initially decided that "counterparty accepted unchanged" was not a markup in the narrow sense and so answered itself without delegating to the specialist. The brief expected delegation plus a specialist "accept" decision. Iteration 2's prompt expansion — explicit list of counterparty-position shapes that *do* trigger delegation, including "accepted unchanged" — fixed it. Carry-forward: department-head prompts should spell out ambiguous input shapes rather than rely on the model's natural-language intuition; orchestration is a decision layer, not a judgment layer.
+
+2. **MiniMax's tool-call discipline for forced-structured-output is ~67% on our first-iteration prompt, driven to 100% across two trials by an explicit output-discipline preamble.** `ToolStrategy` binds the schema tool with `tool_choice="any"` (`langchain/agents/factory.py:1251`), forcing a tool call. MiniMax's OpenAI-compat shim honours this unreliably: on one of three first-iteration runs (Delaware case, run-3 log), the specialist emitted `AIMessage` prose wrapping the decision in ` ```json … ``` ` markdown code fences instead of calling the structured-output tool — so the specialist's result state had no `structured_response`, and Deep Agents' `task` tool fell through to `result["messages"][-1].text.rstrip()` (`subagents.py:396`). The fenced prose was well-formed JSON but flowed through the "no structured output" channel. Iteration 2's preamble ("Your ONLY output channel is a single tool call to the `AcceptRejectDecision` tool. Do not write prose. Do not wrap the JSON in markdown code fences. Emit exactly one tool call and nothing else.") moved runs 4 and 5 to 3-of-3 clean structured-response channel. This is a MiniMax/OpenAI-compat idiosyncrasy — not inherent to the ToolStrategy path — and the JSON extractor in the test harness now accepts both channels belt-and-braces. Carry-forward: the minute specialists get more numerous or rules less step-by-step, this is a candidate for a defensive middleware that falls back to fence-stripped parsing automatically, or a hard switch to a more tool-calling-disciplined specialist model.
+
+3. **`SubAgent` has no `subagents` field; `CompiledSubAgent` is the documented escape hatch for nesting.** From `deepagents/middleware/subagents.py:25-127` (source of truth, CLAUDE.md's "code outranks docs"): the `SubAgent` TypedDict lists nine fields; `subagents` is not one of them. Nesting is therefore "build each non-leaf agent as its own `create_deep_agent(...)` graph and plug the compiled runnable in as `CompiledSubAgent`" (ADR 014). The sprint reached this via reading the source before wiring. Future sprints wanting an org-chart branch deeper than three levels extend the same pattern by induction. Minor caveat (from `graph.py:388-392` docstring): `CompiledSubAgent` does not inherit the parent's `interrupt_on` — HITL has to be configured at every compile site. Not a Sprint 9 concern; flagged for when HITL lands.
+
+4. **The `task` tool's structured-response path only fires for the specialist immediately above it — it does not propagate up the tree.** `SubAgentMiddleware._return_command_with_state_update` (`subagents.py:386-402`) detects `structured_response` and serialises to the parent's `ToolMessage.content`, but the `_EXCLUDED_STATE_KEYS = {"messages","todos","structured_response",...}` block strips `structured_response` from the parent's own state before it propagates further. So at GC level the specialist's JSON is not in `result["structured_response"]`; only HOC's prose wrap is in `ToolMessage.content`. To audit the specialist's JSON, you either (a) invoke HOC directly as a second pass (what the test harness does), (b) give HOC its own `response_format` to preserve the shape (noted in ADR 016 as rejected for this sprint — preserves the JSON contract across levels but forecloses HOC's future role of composing multi-specialist decisions in prose), or (c) write a custom middleware that tees the intermediate state. For Sprint 9's scope, (a) is the simplest diagnostic.
+
+5. **Auto-inserted general-purpose subagents at every nesting level (Sprint 6 surprise 3, now multiplied by three).** GC, HOC, and the accept-reject-reasoner each have a latent `general-purpose` subagent in their tool surface because `create_deep_agent` auto-inserts it when no entry named `general-purpose` is present (`graph.py:546-548`). Three latent subagents across the tree. Enforcement is still prompt-level: each agent's system prompt names only the specialists it should call. No test invocation this sprint tripped on this, but the structural fact should be called out before someone builds a four-or-five-level tree and spends time chasing "why is a general-purpose subagent firing".
+
+6. **LangSmith tracing remains silent — still no key, still no policy block.** Carry-forward from Sprint 6 unchanged. Three-level traces are more verbose than Sprint 7's two-level ones, but the local message-trace dump in the experiment script is enough for Sprint 9; the helper documented in the brief turned out not to be needed — pretty-printing a subset of message kinds covered it.
+
+7. **No policy widenings.** `api.minimax.io:443` allowed since Sprint 3, `openrouter.ai:443` since Sprint 4, PyPI since Sprint 1. No new hosts touched this sprint. `requirements.txt` unchanged (still 59 packages).
+
+---
+
+**ADRs written this sprint (at the moment of decision).**
+
+- **ADR 013 — Structured Output from Specialist Sub-agents via Pydantic + ToolStrategy.** Pydantic class on `SubAgent["response_format"]`; AutoStrategy auto-selects ToolStrategy because MiniMax is absent from LangChain's provider-strategy allow lists; `task` tool serialises via `model_dump_json()`. `counter_language` is required-string-with-empty-default to stay in the JSON schema's `required` list.
+- **ADR 014 — Three-Level Delegation via `CompiledSubAgent`.** `SubAgent` lacks a `subagents` field; `CompiledSubAgent` is the documented mechanism for plugging an arbitrary compiled graph (including a nested Deep Agent) under the `task` tool.
+- **ADR 015 — Playbook Rule Hardcoded in the Specialist's System Prompt (Sprint 9).** Rule GL-001 lives inline in the specialist's prompt. No registry, no YAML, no placeholder Postgres table. Forward trigger: first sprint that needs multi-rule reasoning or human-editable rules supersedes this ADR.
+- **ADR 016 — Head of Commercial's Specialist-Routing Prompt Pattern.** Three-part pattern (role, routing table, relay instructions) layered on what `SubAgentMiddleware` already auto-injects. Explicit input-shape-to-specialist mapping rather than letting the LLM infer from descriptions.
+
+---
+
+**Secrets / env:** three new env vars this sprint (`OSCAR_LLM_ACCEPT_REJECT_REASONER_PROVIDER`, `_MODEL`, `_API_KEY`) added to `.env.example` and `docs/secrets.md`. Typically reuse the same MiniMax provider/key as Head of Commercial; kept separate so per-specialist reallocation stays a config-only change (ADR 010).
+
+**No new dependencies.** `requirements.txt` unchanged. No policy widening.
+
+---
+
+**Next sprint picks up from:** a working three-level org chart (GC → HOC → accept-reject-reasoner) with one functional specialist exercising accept/reject/counter against one playbook rule. Natural directions:
+
+(a) *Second functional specialist under HOC* — comment-responder, fresh-language drafter, or defined-terms auditor. Same `SubAgent`-with-`response_format` pattern (ADR 013), extending HOC's routing prompt (ADR 016) with one more entry.
+(b) *Second playbook rule for accept-reject-reasoner* — triggers ADR 015's supersede (multi-rule specialist prompts get unwieldy; time to introduce rule-as-data).
+(c) *Persistent playbook storage* — Postgres table or YAML-in-repo for rules. Turns rules into human-editable, versioned data. Partners with (b).
+(d) *Real document input* — attach a short NDA plus the rule and see whether HOC can isolate the governing-law clause and route it, or whether a document-parsing layer needs to land first.
+
+Carry-forwards explicitly open: (i) structured-output reliability on MiniMax — prompt-level discipline is 3/3 across two runs with the iteration-2 preamble, but Surprise 2's fallback path is still the right defensive posture when specialist count grows; (ii) `reasoning_details` multi-turn preservation (ADR 012) — still deferred, no sprint yet needs it; (iii) LangSmith tracing still off; (iv) HITL not wired — if needed, `CompiledSubAgent` won't inherit parent `interrupt_on`, so configure per level (ADR 014); (v) the three latent `general-purpose` subagents continue to require prompt-level enforcement.
