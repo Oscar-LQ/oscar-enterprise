@@ -352,6 +352,18 @@ network_policies:
           path: /**/git-upload-pack
     binaries:
     - path: /usr/bin/git
+  minimax:
+    name: minimax
+    endpoints:
+    - host: api.minimax.io
+      port: 443
+    binaries:
+    - path: /sandbox/.venv/bin/python
+    - path: /sandbox/.venv/bin/python3
+    - path: /app/.venv/bin/python
+    - path: /app/.venv/bin/python3
+    - path: /sandbox/.uv/python/**
+    - path: /usr/bin/curl
   nvidia_inference:
     name: nvidia-inference
     endpoints:
