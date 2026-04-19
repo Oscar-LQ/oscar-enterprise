@@ -35,6 +35,9 @@ the table below in the same commit. The "last touched" date answers
 | `OSCAR_LLM_ACCEPT_REJECT_REASONER_PROVIDER` | Per-role DI slot (ADR 010): provider for the accept/reject functional specialist. Read by `get_chat_model(env_prefix="OSCAR_LLM_ACCEPT_REJECT_REASONER")`. | Sprint 9 accept-reject-reasoner specialist. | Sprint 9 | Sprint 9 |
 | `OSCAR_LLM_ACCEPT_REJECT_REASONER_MODEL` | Per-role DI slot: specialist model id for accept/reject reasoning (this sprint `MiniMax-M2.7`). | Sprint 9 accept-reject-reasoner. | Sprint 9 | Sprint 9 |
 | `OSCAR_LLM_ACCEPT_REJECT_REASONER_API_KEY` | Per-role DI slot: API key for the accept/reject specialist's provider. Typically matches the Head of Commercial key when both run on MiniMax. | Sprint 9 accept-reject-reasoner. | Sprint 9 | Sprint 9 |
+| `OSCAR_LLM_REDLINE_SPECIALIST_PROVIDER` | Per-role DI slot (ADR 010): provider for the redline specialist (document-level Adeu-driven redlining). Read by `get_chat_model(env_prefix="OSCAR_LLM_REDLINE_SPECIALIST")`. | Sprint 10D redline-specialist. | Sprint 10D | Sprint 10D |
+| `OSCAR_LLM_REDLINE_SPECIALIST_MODEL` | Per-role DI slot: specialist model id for redlining (Sprint 10D: `MiniMax-M2.7`). | Sprint 10D redline-specialist. | Sprint 10D | Sprint 10D |
+| `OSCAR_LLM_REDLINE_SPECIALIST_API_KEY` | Per-role DI slot: API key for the redline specialist's provider. Typically matches the Head of Commercial key when both run on MiniMax. | Sprint 10D redline-specialist. | Sprint 10D | Sprint 10D |
 
 ## Declared but not yet used
 
