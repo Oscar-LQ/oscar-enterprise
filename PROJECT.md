@@ -750,3 +750,69 @@ A third change landed mid-sprint but it is a *harness* fix, not a model-side ite
 (d) *Real document input* — attach a short NDA plus the rule and see whether HOC can isolate the governing-law clause and route it, or whether a document-parsing layer needs to land first.
 
 Carry-forwards explicitly open: (i) structured-output reliability on MiniMax — prompt-level discipline is 3/3 across two runs with the iteration-2 preamble, but Surprise 2's fallback path is still the right defensive posture when specialist count grows; (ii) `reasoning_details` multi-turn preservation (ADR 012) — still deferred, no sprint yet needs it; (iii) LangSmith tracing still off; (iv) HITL not wired — if needed, `CompiledSubAgent` won't inherit parent `interrupt_on`, so configure per level (ADR 014); (v) the three latent `general-purpose` subagents continue to require prompt-level enforcement.
+
+### Sprint 10A — 2026-04-19 — Adeu integration research (plan only, no code)
+
+**Goal:** Research-only sprint. Produce a written plan for introducing Adeu (the third-party OOXML redlining library) as the tool that applies edits to `.docx` files. No code in Oscar, no changes to `src/`. Deliverable: a committed research note covering (1) Adeu as it exists today, (2) the prior-art Claude-Plugin-MCP project's prompting discipline for lawyer-shape output, (3) a proposed plan for Sprint 10B+ including the specialist's system prompt, and (4) risks honestly surfaced. Sprint 10B is implementation — only after this plan is reviewed.
+
+**Done:** `docs/research/sprint-10-adeu-integration.md` committed — a ~990-line research note covering Parts 1–4 from the brief. Two external repositories cloned into `/sandbox/reference-material/` (outside Oscar's repo, will disappear on sandbox reset — reference material, not source):
+- `reference-material/adeu/` — Adeu itself, GitHub `dealfluence/adeu` HEAD of `main`.
+- `reference-material/claude-plugin-mcp/` — the prior-art plugin, GitHub `sarturko-maker/Claude-Plugin-MCP` HEAD of `main`.
+
+Adeu and Claude-Plugin-MCP were read from source per CLAUDE.md's "code outranks docs" rule — the findings in the research note reference specific files and line behaviours, not just READMEs.
+
+**Top-line plan recommendations (full detail in the research note):**
+
+- **Integration architecture:** wrap Adeu as a Python library (SDK) and expose it to Deep Agents via one or two `@tool`-decorated functions. Not the CLI (adds subprocess friction) and not the MCP server (adds transport layer Deep Agents does not need here). This is also the pattern the prior art used.
+- **Which agent calls Adeu:** a new `redline-specialist` under Head of Commercial, built with `create_deep_agent(...)` and plugged into HOC as a `CompiledSubAgent` (ADR 014 pattern). Specialist tier (ADR 010). Not the existing `accept-reject-reasoner` — that one's scope is decision-on-one-edit, not document-transformation; not HOC itself — HOC is the routing layer (ADR 016).
+- **The specialist's system prompt:** proposed verbatim in research note §3.3. ~520 words. First-pass redlining only for Sprint 10B (no counterparty-response workflow yet). Carries the three rules extracted from prior art that anti-dote the "delete sentences instead of redlining" failure mode: (a) target the minimum changed span of 5–15 words, (b) do not rewrite what you are not changing, (c) never delete a whole sentence or paragraph to replace it. Plus comment-discipline (0–3 comments per ~10-clause NDA), author attribution, and the anchor-based insertion pattern for new clauses.
+- **Three test NDAs proposed in shape only** (drafted in 10C, not this sprint): NDA A is unilateral for the "make mutual" transformation; NDA B is mutual without a liability clause for the "add LoL" transformation; NDA C is mutual with a litigation jurisdiction clause for the "convert to arbitration" transformation. 1–2 pages each, 8–12 numbered clauses.
+- **Three test transformations drafted** with prompt shapes and success criteria per transformation (research note §3.5). Success criteria distinguish structural validity (.docx parses, `w:ins`/`w:del` land cleanly) from lawyer-shape quality (surgical edits vs paragraph-rewrite, completeness on coordinated changes, no scope creep, comment discipline).
+- **Sprint scope:** recommend a three-sprint split (10B substrate → 10C wiring → 10D verification). Mixing substrate and prompt-quality work in one sprint makes prompt misses hard to isolate from substrate regressions; a three-way split keeps each sprint's success criterion binary and mirrors the Sprint 1/2/3 substrate-then-application pattern already used in this project.
+
+**Key findings from reading actual source:**
+
+1. **Adeu is at 1.1.0 on PyPI** (just past 1.0). MIT-licensed, Python ≥3.12 (we're on 3.13 — fine). Three interfaces (SDK / CLI / MCP server) over one engine. Public API surface: `RedlineEngine`, `ModifyText`, `AcceptChange`, `RejectChange`, `ReplyComment`, `DocumentChange` (discriminated union), plus `extract_text_from_stream` and `apply_edits_to_markdown`.
+
+2. **Adeu is API-churn prone.** Claude-Plugin-MCP pins `adeu>=0.7.0` and imports `DocumentEdit` — a symbol that no longer exists in 1.1.0 (now `ModifyText`, with the Accept/Reject/Reply siblings factored out). The 0.9.0→1.0.0→1.1.0 bump was breaking. Posture for Oscar: pin to `adeu==1.1.0` exactly, budget future sprints for bumps. (ADR to write in 10B.)
+
+3. **Adeu's dep footprint is larger than expected.** `pyproject.toml` lists `fastmcp[apps]>=3.1.1` as a direct (non-extra) dependency. SDK-only consumers still install FastMCP + transitives. Plus `lxml>=5.0.0`, `python-docx>=1.1.0`, `keyring>=25.7.0`, `structlog`, `jinja2`, `diff-match-patch`. Need to verify no conflict against our 59 pinned packages in Sprint 10B's first step — flagged as risk R1 + R2 in the note.
+
+4. **Adeu's `target_text` contract is strict-enough to prevent one failure mode but not another.** Engine raises `BatchValidationError` if `target_text` matches zero spans or more than one span — so the model can't silently pick the wrong occurrence, and is forced to re-submit with more context. But the engine will *happily* accept a whole-sentence `target_text` with empty `new_text` as a bulk deletion. The "delete sentences instead of redlining" failure is prompt-level, not engine-enforceable; prevention lives in the specialist's system prompt.
+
+5. **Prior art's discipline is a workflow, not a single prompt.** Claude-Plugin-MCP's negotiate-contract skill file is 805 lines split into two branches (clean-document first-pass vs counterparty-response), with the branch chosen mechanically from whether the ingested document contains CriticMarkup markers. For Sprint 10B we only need the first-pass branch — counterparty-response is a later sprint. The three rules that matter most for lawyer-shape output fit in ~200 words inside the specialist's system prompt; the rest of the skill file covers concerns (multi-round posture, authority zones, styler pass, state-of-play) that Oscar doesn't need yet.
+
+6. **Adeu's rejection primitive does not match Word-UI "reject".** `RejectChange(target_id=...)` cancels one of *your own previously-proposed* changes (referenced by `Chg:N` ID); it does not provide a way to "reject" counterparty text. This is actually a structural safeguard: the model *cannot* accidentally make counterparty text vanish via Adeu's API — it can only delete text by passing it to `ModifyText(target_text=..., new_text="")`, which produces a visible `w:del`. The audit-trail-preservation invariant prior art enforces via prompt is therefore partly enforced by Adeu's API shape. Small but important reassurance.
+
+7. **Deep Agents' `StateBackend` filesystem stores files as strings** (Sprint 6 observation); a `.docx` is binary. The redline-specialist will work on real filesystem paths (e.g. `tests/fixtures/ndas/` in the repo, or `/tmp/oscar-redline/` for outputs), not on the graph's `files` channel. Flagged as risk R4 in the note, with an ADR earmarked for 10B.
+
+**Risks surfaced (10 in total, full detail in note §4):**
+
+R1 Adeu dep-tree conflict with pinned manifest; R2 `fastmcp[apps]` is a hard dep for SDK consumers; R3 prior-art prompting was built against Claude — MiniMax / gpt-5.4 may drift; R4 StateBackend is text-only, need a filesystem-path pattern; R5 LangChain tool-binding for discriminated unions is quirky — use `ModifyText` directly not the `DocumentChange` union for the MVP; R6 latent `general-purpose` subagent pyramid now three levels deep; R7 Adeu API churn at future version bumps; R8 comment-discipline prompt is English/common-law-culture-specific; R9 "opens in Word" cannot be automated in the sandbox (no Word, no LibreOffice); R10 test-fixture `.docx` creation is decide-in-10B-or-10C (programmatic via `python-docx` vs hand-authored on the host).
+
+**What this sprint explicitly did NOT do:**
+
+- No code changes to Oscar. `src/` untouched.
+- No install of Adeu in the venv (research whether/how — did not execute).
+- No drafting of test NDAs (proposed shape only).
+- No modification of any existing agent.
+- No new ADRs committed (the 10B sprint will make the decisions and write ADRs at the moment of decision — on SDK-vs-CLI-vs-MCP choice, on specialist-prompt structure, and on filesystem-path pattern).
+- No changes to sprint routing or org-chart structure.
+
+**Clone locations (outside Oscar's repo, will disappear on sandbox recreation — this is intentional):** `/sandbox/reference-material/adeu/`, `/sandbox/reference-material/claude-plugin-mcp/`. Repos are read-only reference material; do not commit to Oscar.
+
+**No new dependencies, no policy widenings, no env-var changes, no `requirements.txt` changes, no ADRs.** `docs/research/` is a new directory — this sprint's note is its first entry.
+
+**Surprises, flagged honestly:**
+
+1. **Adeu's engine cannot be made to "reject counterparty text" via `RejectChange`.** The brief spoke of a prior failure where Oscar-like agents deleted sentences instead of redlining. Reading Adeu's source, I had expected `RejectChange` to be a footgun the specialist's prompt would have to defuse. It is not — `RejectChange` takes a `target_id` (an existing `Chg:N`) and only cancels the agent's own prior edits. The mechanism through which whole-sentence deletion happens is `ModifyText` with a long `target_text` and empty `new_text`, which Adeu treats as a valid bulk deletion. So the prompt-side discipline is needed not to unlock the failure mode (the API already blocks one path into it) but to prevent the specialist from taking the other path (over-broad `target_text` on modifications). Slightly re-frames the problem the Sprint 10A prompt has to solve — and the §3.3 prompt in the research note reflects this framing.
+
+2. **`fastmcp[apps]` ships as a hard dependency of Adeu, even for SDK use.** Expected an optional-extra pattern; actual is `pyproject.toml` listing `fastmcp[apps]>=3.1.1` in top-level `dependencies`. SDK-only Oscar usage still installs the MCP-server stack. Not a blocker (unused modules stay dormant), but inflates install footprint and may trigger secondary dep resolutions we haven't stress-tested. Captured as risk R2; 10B's first step confirms or refutes empirically.
+
+3. **Claude-Plugin-MCP's skill file is long but its core disciplines compress.** At 805 lines the negotiate-contract skill file looks intimidating; reading it, the first-pass workflow is ~100 relevant lines and the lawyer-shape rules that prevent the failure mode fit in ~200 words. Most of the skill file is about multi-round counterparty-response calibration, authority zones, comparison reports, and the styler pass — none of which Oscar needs in Sprint 10B. Good news for prompt-size budget in the specialist definition.
+
+4. **Prior art reaches into Adeu's internal submodules** (`adeu.anchor`, `adeu.redline.mapper.DocumentMapper`). These are not part of the `__all__` public API. Oscar should stay inside the public surface (ADR to commit this in 10B if it becomes a call-site concern). The implication: if Oscar ever hits a case the public API can't express, it's an upstream issue to raise with Adeu's maintainers rather than reach around into internals.
+
+5. **No existing `docs/research/` directory — creating it for this sprint.** Previous sprints have used `docs/adr/` for decisions and PROJECT.md for the sprint log. A research note is a new artefact category — options considered but not yet decided. First instance committed this sprint. Future research-heavy sprints can use the same directory; no structural change to the repo beyond that.
+
+**Next sprint picks up from:** a written plan (`docs/research/sprint-10-adeu-integration.md`) covering Adeu integration strategy, the redline-specialist's proposed system prompt, test-NDA shapes, test-transformation prompts and success criteria, and a recommended three-sprint split (10B substrate, 10C wiring, 10D verification). The two cloned reference repos remain in `/sandbox/reference-material/` for 10B/C/D to consult (read-only). No Oscar-side code, policy, dependency, or env-var state has changed this sprint. Human review of the plan is the gate before 10B starts — per the brief, "stop and surface for human review."
