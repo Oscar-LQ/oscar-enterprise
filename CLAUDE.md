@@ -13,7 +13,8 @@ AI-coded projects where Claude Code, Cursor, Copilot, or autonomous agents write
 ## Project Specification
 
 **Read PROJECT.md before writing any code.** It describes what this project builds, the technology stack, reference projects to survey, build phases, and functional requirements. This file (CLAUDE.md) governs how to write the code. PROJECT.md governs what code to write.
-PROJECT.md has two parts: a goal section describing what Oscar is, and a sprint log at the bottom recording what has been built sprint by sprint. Read both. At the end of every sprint, append a new entry to the sprint log following the format of previous entries before committing.
+
+**PROJECT.md is paired with SPRINT_LOG.md.** PROJECT.md has two parts: a goal section describing what Oscar is, and a Sprint Index at the bottom — one-line summaries of every sprint, chronological. The full append-only detailed record of each sprint (goals, findings, surprises, ADRs, carry-forwards) lives in `SPRINT_LOG.md` at the repo root. Read PROJECT.md fully every time. Always read the most recent entry in SPRINT_LOG.md to know where the previous sprint left off. Use the Sprint Index to identify which older entries in SPRINT_LOG.md are relevant to the current task, and read those — how many depends on the task, use judgement. At the end of every sprint, append a new entry to SPRINT_LOG.md following the format of previous entries and add a matching one-line summary to the Sprint Index in PROJECT.md before committing.
 
 ## Framework Stack (Current)
 
