@@ -1001,3 +1001,134 @@ Message 4 contains a false claim that the file didn't exist (the subagent noneth
 (v) Arturs's review of `adeu-lawyer-shape-criteria.md` (from Sprint 10C) is still outstanding. 10E cannot start its lawyer-shape verification without it.
 
 **Next sprint picks up from:** a working three-level org chart (GC → HOC → {redline-specialist, accept-reject-reasoner}), one end-to-end redline in the sandbox, and the four carry-forwards above. Sprint 10E inherits Arturs's review of this .docx + the 10C criteria doc, and iterates (most likely on the specialist prompt, possibly on the model).
+
+### Sprint 10E — 2026-04-19 — Import surgical-span discipline from Claude-Plugin-MCP; re-run 10D's transformation with lawyer-shape output
+
+**Goal.** Fix the two lawyer-shape failures Sprint 10D left in `nda-output.docx` — over-broad 47-word w:del/w:ins pairs and a broken audit trail (empty `<w:delText/>` inside a nested `w:del`, duplicate w:ins) — by importing surgical-span discipline from Claude-Plugin-MCP into the MiniMax-backed redline-specialist's system prompt. Re-run the same litigation→arbitration transformation on the same input NDA; self-verify OOXML mechanically without handing the output to Arturs for review. Per brief: prompt + tool-return + post-hoc validation layers only; no code copied, no model swap.
+
+**Done.** One iteration. `src/experiments/sprint-10e/run.py` runs end-to-end and prints `sprint-10e: end-to-end redline run completed (mechanical checks).` The specialist (MiniMax-M2.7) made EXACTLY TWO tool calls — the two calls the prompt specified — and the resulting `nda-output.docx` has the planned OOXML shape: `w:ins × 2 + w:del × 1`, authored by "Oscar", no nested-delete, no duplicate insertion, litigation phrase preserved in `w:delText`. Clean-view read-back renders the transformed §9 correctly. Artefacts: `src/experiments/sprint-10e/{run.py, build_input.py, nda-input.docx, nda-output.docx, transcript.txt, tool-calls.jsonl}`.
+
+**The specialist's two tool calls — verbatim, as captured by the tool implementations during the run** (source: `tool-calls.jsonl`; promoted here per Arturs's review-brief instruction, because these are the single most informative artefact — they tell us whether MiniMax followed the two-call plan literally or deviated, and the answer is *literally, without deviation*):
+
+```
+CALL 1: modify_text(
+    target_text="the exclusive jurisdiction of the courts of England and Wales",
+    new_text="binding arbitration under the LCIA Rules",
+    comment="",
+)
+
+CALL 2: insert_text(
+    anchor_text="arising out of or in connection with this Agreement.",
+    new_text=" The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.",
+    comment="",
+)
+```
+
+Both calls are byte-identical to the values written into the system prompt's "DECOMPOSITION FOR THIS TRANSFORMATION" block. There was no third call, no retry, no target drift, and no CriticMarkup echo in either parameter.
+
+**Scope framing — this sprint tests EXECUTION, not identification.** The prompt handed the specialist the exact target_text / new_text / anchor_text values to send to Adeu. 10E's question is: given a surgical decomposition for a specific transformation, can MiniMax carry it out faithfully (correct matches, no self-re-target, no double-call, audit trail preserved)? **Answer: yes, on the first iteration.** 10E does NOT test whether MiniMax can read a clean NDA, reason about where the narrow changing span is, and decompose the transformation itself — that is a strictly harder capability. A successful 10E is evidence MiniMax can *run* a given plan, not that it can *produce* one. Naming this boundary prevents future-us reading 10E's outcome and concluding more than it proves. A future sprint revisits identification once this execution bar is proven clear.
+
+**OOXML inspection — all Sprint 10E brief criteria met:**
+
+```
+tracked changes: w:ins=2, w:del=1
+
+w:del id=1  author=Oscar  words=10
+  text: "the exclusive jurisdiction of the courts of England and Wales"
+
+w:ins id=2  author=Oscar  words=6
+  text: "binding arbitration under the LCIA Rules"
+
+w:ins id=3  author=Oscar  words=30
+  text: " The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties."
+```
+
+Criterion-by-criterion (from the brief's §Phase 2 re-test plan):
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | `w:ins`/`w:del` narrowly scoped? Any span >20 words suspicious; >50 almost certainly wrong. | `w:del` 10 words (clean), `w:ins` 6 words (clean), `w:ins` 30 words (SUSPICIOUS — but this is the substantive arbitration-machinery sentence, not an over-broad swap; acceptable per the plan). Zero >50-word spans. |
+| 2 | Original text preserved inside `w:delText` (no nested empty-delText pattern)? | YES. `w:del` id=1 contains the full original phrase. No nested `w:del`. No empty `w:delText`. |
+| 3 | Duplicate insertions? | NO. Two w:ins elements, distinct content. |
+| 4 | Document opens cleanly (valid zip, parseable XML)? | YES. 21 parts, parses, 40,281 bytes. |
+
+**Clean-view (Accept-All) read-back of §9** (from `extract_text_from_stream(..., clean_view=True)`):
+
+> 9. Governing Law and Dispute Resolution
+>
+> This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. **The parties submit to binding arbitration under the LCIA Rules for the resolution of all disputes arising out of or in connection with this Agreement. The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.**
+
+Governing-law sentence intact. Arbitration provision names all five required elements (seat London, LCIA Rules, sole arbitrator, English language, final and binding). Grammatically well-formed.
+
+**Research findings — what was imported from Claude-Plugin-MCP.**
+
+The surgical-span discipline in Claude-Plugin-MCP is in TWO places, not one — and this matters for Oscar:
+
+1. **Prompt discipline.** `skills/negotiate-contract/SKILL.md` Step D1 "Edit Precision Rules" (lines 648-689). Three rules: target the minimum changed span (5-15 words), do not rewrite what you are not changing, keep target_text as short as uniquely matchable. Two concrete WRONG/RIGHT examples showing single-word and defined-term edits. This is ~40 lines of prose, written for Claude.
+
+2. **Deterministic word-diff pipeline in code.** `src/pipeline/word_diff.py` + `surgical_edit.py` + `word_diff_elements.py`. The LLM produces one `{target_text, new_text}` pair per intended change; the pipeline does a diff-match-patch word-level diff inside the matched span and emits MULTIPLE narrow `w:del`/`w:ins` elements for just the words that changed. The prompt-level discipline is lighter because the code carries most of the work.
+
+Oscar does NOT have the code pipeline — Oscar calls Adeu directly. Adeu's nearest equivalent is `trim_common_context`, which only trims a SHARED PREFIX OR SUFFIX — it does not do interior word-level diff. For transformations where the old and new text share no prefix/suffix (exactly the litigation→arbitration case), `trim_common_context` does nothing, and a whole-sentence target produces a whole-sentence w:del + whole-sentence w:ins. **This is precisely why 10D's output shape looked the way it did.** 10D's prompt told the specialist to use a whole-sentence target "because trim_common_context will narrow"; the premise was false for this transformation, and the whole-sentence swap was the faithful execution of that false premise.
+
+So the 10E prompt carries more work than Claude-Plugin-MCP's prompt needs to: it has to teach the specialist both (a) the general surgical-span rule *and* (b) how to decompose manually for a structural rewrite. The 10E prompt does this by handing the specialist an explicit two-call decomposition rather than asking it to derive one — preserving the boundary between execution and identification.
+
+**The 10E prompt — key sections (see `run.py::redline_specialist_prompt`):**
+
+- Output-discipline preamble at top, matching Sprint 9's proven MiniMax pattern (67% → 100% tool-call discipline).
+- A **NO-RETRY RULE** front-loaded to prevent the 10D nested-delete failure: *"Re-targeting a region you already edited will nest a new redline inside your previous one, clear the original text from the audit trail, and produce a broken redline."*
+- A **SURGICAL-SPAN RULE** distilled from Claude-Plugin-MCP Step D1: *"Target 5-15 words, only the phrase that differs, plus just enough anchor context for a unique match. Never use a whole sentence or paragraph as target_text when only part of it differs. Never rewrite what you are not changing."*
+- A **DECOMPOSITION FOR THIS TRANSFORMATION** section explaining why this is a structural-rewrite case (shared-prefix narrowing won't help) and handing MiniMax the exact two calls to make.
+- A **WRONG** example quoting 10D's literal failure text so MiniMax pattern-matches away from it.
+- The existing reply template (`"Redline saved to {output_path}."`) preserved so the stop condition still matches.
+
+**Three coordinated changes vs. 10D** (all local to `src/experiments/sprint-10e/run.py`):
+
+1. `redline_specialist_prompt()` rewritten end-to-end (see above).
+2. `_apply_one_edit()` success return extended with an anti-retry brake inside the one channel MiniMax is guaranteed to read: *"...this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop."* The `applied: edits_applied=N edits_skipped=M` prefix is kept verbatim so the prompt's stop-condition match still fires.
+3. `verify_output()` extended with four warning-only checks operationalising the 10E self-verification criteria: per-element span widths (>20 suspicious, >50 almost-certainly-wrong), empty-delText nested-delete signature, duplicate w:ins content (>10 words, ≥2 copies), and a transformation-specific spot-check that the litigation phrase is present in some `w:delText`. Warnings append to `notes`; the `ok` return stays True while the file is a valid zip with parseable `document.xml`. Sprint 10E's pass/fail criterion is what the warnings say, not a boolean gate.
+
+Additional defensive add (not in the original plan but cheap): a module-level `_TOOL_CALL_CAPTURE` list and a `tool-calls.jsonl` file. Deep Agents' `task` tool hides subagent messages behind its final string — the specialist's `modify_text`/`insert_text` args cannot be recovered from the GC-level message trace (confirmed empirically — a prior extractor returned `[]`). The tool functions themselves are the only reliable capture point, so they now append to `_TOOL_CALL_CAPTURE` as they run. This is the source of the verbatim tool-call block promoted near the top of this entry.
+
+**Surprises (new to this sprint):**
+
+1. **The specialist's tool calls do not surface at the GC (outer) message trace.** The first `extract_specialist_tool_calls` implementation walked `result["messages"]` for AIMessages with `tool_calls` named `modify_text`/`insert_text`; it found none. Deep Agents' `SubAgentMiddleware` serialises the subagent's final AIMessage content into a `ToolMessage` on the outer trace, and strips the subagent's internal message list along with other state. This is the same shape Sprint 9 hit with `structured_response` (§`subagents.py` `_EXCLUDED_STATE_KEYS` stripping). Mitigation: record tool calls inside the tool implementations themselves — the only vantage point that sees every call. Carry-forward: if future sprints need the specialist's reasoning messages (not just tool args), the options are (i) invoke HOC or the specialist directly as a second pass per Sprint 9 Surprise 4, or (ii) a custom middleware that tees intermediate state.
+
+2. **MiniMax followed the two-call plan byte-identically on iteration 1.** No target drift, no paraphrasing, no comment field added, no third call. This is stronger evidence of MiniMax's tool-call discipline than Sprint 9 produced (where one of three runs slipped on structured-output), and it comes from a longer prompt with more procedural detail. The Sprint-9 lesson generalises: MiniMax keeps shape when the prompt's top is imperative and terse AND the discipline is restated at the point of action (the "NO-RETRY RULE" + the explicit CALL 1 / CALL 2 block). Carry-forward: for specialists whose task decomposes into a small fixed number of steps, handing the model an explicit numbered plan is a reliable pattern on MiniMax — no need for a stronger model.
+
+3. **HOC no longer paraphrased with hallucinated context.** Sprint 10D's surprise #3 was HOC adding "the subagent reported that the file did not exist, so it created a representative NDA instead" to its relay — a fabricated bridging sentence. In 10E, HOC's relay of the specialist's "Redline saved to ..." line is close to verbatim, with a short summary that does not invent facts. The 10E sprint did not touch the HOC prompt; the difference may be stochastic (MiniMax variance run to run), or may be due to 10E's specialist returning a cleaner output (no error conditions to paraphrase around). Not a reproducible fix — the HOC-paraphrasing hazard remains an open carry-forward per 10D (iii).
+
+**Expected friction observed (from the plan):**
+
+| # | Friction anticipated | What actually happened |
+|---|----------------------|------------------------|
+| 1 | MiniMax over-broadens on whole-sentence targets | Not exercised — the prompt handed MiniMax narrow targets, and it used them verbatim. |
+| 2 | MiniMax re-targets its own prior w:ins (10D failure mode) | Not exercised — NO-RETRY RULE plus the explicit two-call plan left MiniMax nothing to retry. |
+| 3 | Target_text doesn't match the document exactly (whitespace/case) | Not exercised — the prompt's exact phrases pre-matched the document (confirmed before the run via a 4-phrase grep). |
+| 4 | Adeu skips an edit due to ambiguous match | Not exercised — all targets were unique in the document. |
+
+**Assessment.** The sprint's stated purpose is met on the first iteration. The `.docx` opens cleanly (21 parts, valid OOXML), the tracked changes are narrowly scoped where they should be narrow and substantively sized where they legitimately are (the 30-word arbitration-machinery sentence is a new sentence of professional drafting, not an over-broad swap). Original litigation text is preserved in the audit trail. Clean-view renders the transformation as intended. The output is now suitable for Arturs's human review in Word — that is the next gate for this track. **Human-review handoff per the brief: `src/experiments/sprint-10e/nda-output.docx`.**
+
+**Carry-forward notes.**
+
+(i) HOC paraphrasing hazard (10D carry-forward iii) — did not bite this sprint but remains open; mitigation options unchanged.
+
+(ii) Arturs's review of `adeu-lawyer-shape-criteria.md` (10D carry-forward v) — 10E's self-verification used the criteria in the 10E brief directly, not the 10C draft criteria doc. The 10C doc remains unsigned-off. Not blocking future sprints that continue to verify against the brief; becomes blocking if a later sprint wants a shared criteria reference across multiple transformations (T1 "make mutual", T2 "add LoL").
+
+(iii) Scope boundary explicitly: 10E tests EXECUTION. Identification remains untested on MiniMax. A future sprint that asks the specialist to decompose a transformation it has not been pre-decomposed for is the natural next step — likely after the first real lawyer-authored Playbook entry lands, so decomposition can be guided by playbook rules rather than by freeform reasoning.
+
+(iv) Comment capability: comments are still not reachable on pure deletions (10D carry-forward iv, Adeu 1.1.0 SDK limitation). Neither 10E tool call needed a comment, so the workaround isn't exercised here. Reopened if a future transformation requires a standalone comment.
+
+**No new ADRs.** This is pure prompt refinement plus a small validation and logging add. The tool-call-capture pattern (`_TOOL_CALL_CAPTURE` + `tool-calls.jsonl`) is reusable across sprints; if a subsequent sprint needs the same discipline elsewhere, that sprint can extract the pattern into `src/experiments/common/` at the point it becomes a second call site — deferred per CLAUDE.md's modularity discipline.
+
+**No new dependencies, no policy widenings, no env-var changes.** `requirements.txt` unchanged at 119 pinned packages. Network policy untouched. The `OSCAR_LLM_REDLINE_SPECIALIST_*` triple added in 10D is reused unchanged.
+
+**Next sprint picks up from:** a working end-to-end redline that meets all four Sprint 10E self-verification criteria, a captured tool-call log suitable for audit, a committed `.docx` output ready for Arturs's Word-level human review, and a scope boundary (execution vs. identification) that frames the hypothesis for the next test. Natural next directions:
+
+(a) *Human-review iteration.* Arturs opens `src/experiments/sprint-10e/nda-output.docx` in Word, reviews the surgical redlines, and notes any lawyer-shape concerns 10E's mechanical checks didn't catch. Sprint 10F's scope depends on that review.
+
+(b) *Identification, not execution.* Give the specialist the prompt from 10E minus the "CALL 1 / CALL 2" block — only the general surgical-span rule, no per-transformation decomposition — and test whether MiniMax can produce the narrow targets itself. This tests the harder capability 10E deliberately excluded.
+
+(c) *Second transformation (T1 "make mutual" or T2 "add LoL").* Re-test 10E's prompt pattern on a different transformation with a different decomposition shape. T1 stresses coordinated consistency (many narrow edits), T2 stresses novel-clause insertion in a sensible location. Either extends the evidence base for the surgical-span discipline.
+
+(d) *HOC output-envelope hardening.* Tighten HOC's "relay verbatim" rule and/or have the specialist return a JSON envelope (`status`, `output_path`, `summary`) that HOC reads literally — deferred 10D (iii) carry-forward.
+
