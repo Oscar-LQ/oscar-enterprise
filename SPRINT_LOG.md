@@ -1515,3 +1515,186 @@ In short: don't do the split as 10H. Do the model swap as 10H, and let its outco
 
 (d) *Expand test coverage to T1 (make-mutual) or T2 (add-LoL).* Defer until T3's specialist capability is settled by 10H.
 
+### Sprint 10H — 2026-04-20 — Planner / executor split (Shape A): GPT-5.4 planner + MiniMax executor under Head of Commercial
+
+**Goal.** Build and validate Shape A per Arturs's architectural choice: a frontier planner (GPT-5.4 via OpenRouter) decomposes the transformation into a narrow JSON edit plan; a specialist executor (MiniMax-M2.7) consumes the plan and applies each entry via `modify_text` / `insert_text`. Both under Head of Commercial. Same NDA, same transformation as 10D/10E/10F/10G (litigation → binding LCIA arbitration). Primary end-to-end run plus one control run (executor alone, handed 10E's hand-decided spans in the 10H plan contract) to isolate the executor's pure-execution discipline from the planner's quality.
+
+**Done — Outcome C (primary) + Outcome-A-class control.** Feature-branch commit only per brief's unsuccessful-sprint rule; sprint log entry on main with findings and Sprint 10I proposal. Branch: `sprint-10h-planner-executor-split`. Artefacts on the branch: `src/experiments/sprint-10h/{run.py, build_input.py, nda-input.docx, nda-output.docx, plan.txt, hoc-invocations.jsonl, tool-calls.jsonl, transcript.txt, run.out, control-nda-output.docx, control-tool-calls.jsonl, control-transcript.txt}`. No iteration attempted: the primary failure mode is structural (the planner produced plans whose `target_text` did not byte-match the NDA, and HOC corrupted the planner's input on relay) — narrow-fix territory per the brief is tool-friction type failures, not structural-routing failures.
+
+**The three primary artefacts, surfaced verbatim per the brief and Arturs's Addition 1.**
+
+**(1) Planner's plan** (from `plan.txt` — the planner was invoked twice by HOC; both invocations captured):
+
+*Planner message 1 (placeholder-plan):*
+
+```
+I will make 1 edit.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "[existing litigation/jurisdiction sentence - replace entirely]",
+    "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+    "reason": "Replace only the jurisdiction/dispute-resolution sentence with the required LCIA arbitration wording while leaving the governing-law sentence ending 'England and Wales.' unchanged."
+  }
+]
+```
+```
+
+*Planner message 2 (specific-but-hallucinated target):*
+
+```
+I will make 1 edits.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.",
+    "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+    "reason": "Replace the jurisdiction/litigation sentence with binding LCIA arbitration language while leaving the governing-law sentence unchanged."
+  }
+]
+```
+```
+
+Plan-1 violates the planner's explicit "no placeholders" discipline (the `target_text` is a literal bracketed description). Plan-2 writes a specific sentence that does NOT match the NDA: the NDA's §9 dispute-resolution sentence is *"The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement."* (lowercase "parties"; no "irrevocably"; continues past "England and Wales"). Plan-2's target_text is a hallucinated drafting from the planner's priors, not a read of the actual clause. Both plans converge on a bundled one-edit shape — the planner chose to replace the whole dispute-resolution sentence with one new sentence rather than decompose into narrow span edits.
+
+**(2) HOC's task-invocation string to the executor** (from `hoc-invocations.jsonl` — two invocations captured, plan content verbatim from `plan.txt` above; surfaced here to prove HOC's plan-relay step was faithful):
+
+*Invocation 1* wrapped plan-1 in `Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx.\n\n` + the plan-1 text verbatim. The `description` field preserved the fenced ```json block character-for-character.
+
+*Invocation 2* wrapped plan-2 the same way.
+
+**Important: HOC's plan-relay to the executor was faithful.** The `description` fields in `hoc-invocations.jsonl` contain the planner's output verbatim with a single-line preamble naming the file path. No summarisation, paraphrasing, or corruption at the HOC→executor step. Arturs's Addition 1 capture point confirmed its purpose: the failure on the primary is NOT at the HOC→executor relay; it is at the *HOC→planner* relay (see Surprise 1 below) and at the planner itself.
+
+**(3) Executor's tool calls** (from `tool-calls.jsonl` — exactly ONE substantive call across both invocations):
+
+```
+CALL 1: modify_text(
+    target_text='The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.',
+    new_text='Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.',
+    comment='',
+)
+```
+
+That call's `target_text` did not match the NDA (see plan-2 analysis above). Adeu returned an `ERROR:` (unmatched target). The executor stopped and replied with an error per its malformed-plan / tool-error discipline. **Plan-1 (placeholder) produced zero executor tool calls** — the executor refused to call `modify_text` with a literal bracketed placeholder, even though the JSON was structurally valid (placeholder is a valid string — my explicit malformed-plan checks would not have flagged it, but MiniMax's own judgement apparently did). **Plan-2 (hallucinated) produced the one call above**, which Adeu rejected.
+
+**Plan-to-tool-call mapping.** Plan-1 → 0 calls (faithful-to-plan by refusal; the plan was unusable). Plan-2 → 1 call with `target_text`/`new_text` byte-identical to the plan entry. The executor's mapping was faithful when the plan was parseable; the failure is entirely upstream.
+
+**OOXML inspection — mechanical criteria (same four as 10E/10F/10G):**
+
+```
+w:ins=0, w:del=0  (21 parts expected; file is a 38,795-byte valid zip,
+                   17 parts — the 4 comments-related parts that
+                   CommentsManager eagerly creates when any edit runs
+                   are ABSENT, consistent with zero edits applied).
+```
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | `w:ins`/`w:del` narrowly scoped? | N/A — no tracked changes were written. The one attempted edit ERROR'd out before OOXML mutation. |
+| 2 | Original text preserved inside `w:delText` (no nested empty-delText)? | N/A — no deletions. |
+| 3 | Duplicate insertions? | N/A — no insertions. |
+| 4 | Document opens cleanly (valid zip, parseable XML)? | YES. 17 parts (fewer than 10E/10F/10G's 21 because no edits triggered CommentsManager). File is byte-equivalent to the input. |
+
+**Additional assessments (per brief):**
+
+- **Span-selection content quality:** FAIL. Clean-view §9 is the unchanged original litigation clause — no arbitration elements present. Not because the planner's `new_text` lacked them (it named all five), but because the `target_text` didn't match so nothing was written.
+- **Number and shape of tool calls:** 1 executor call (from plan-2); 0 from plan-1. Neither ran to completion. Shape is "planner bundled into one edit" — 10F/10G-like shape at the planning stage — and "executor called once with bad args; Adeu rejected; executor stopped per discipline." Outcome A target of 2-4 narrow calls was not attempted because the plan never specified multiple narrow edits.
+
+**Control run — clean Outcome-A-shape execution.** The executor was invoked directly (HOC-bypassed) with a 10H-format JSON plan populated with 10E's exact CALL 1 / CALL 2 spans. Two entries: `modify_text` swapping the 11-word forum phrase; `insert_text` appending the seat/language/arbitrator/finality sentence. Executor made exactly two tool calls, byte-identical args to the plan, no retries. Final reply: *"Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx."*
+
+Control OOXML (from `verify_output`, abbreviated):
+
+```
+tracked changes: w:ins=2, w:del=1
+OK: w:ins[id=2] span=6 words
+WARN: w:ins[id=3] span=30 words — >20, suspicious (review against criteria)
+OK: w:del[id=1] span=10 words
+SPOT-CHECK OK: litigation phrase preserved in w:delText.
+```
+
+The 30-word `w:ins` is the substantive seat/language/arbitrator/finality sentence — the same legitimate "substantive new sentence" shape 10E produced. Content spot-check: seat London FOUND, rules LCIA FOUND, sole arbitrator FOUND, final and binding FOUND, English language notionally FOUND (the verification check is false-negative here — the content says "the language English" which matches none of the regex variants "English language" / "in English" / "the English language"; the element is present in the clean-view text as *"the language English"*).
+
+**Control run is Outcome-A-shape identical to 10E.** Executor's pure-execution discipline is intact in the new architecture. The primary run's failure is NOT the executor.
+
+**Outcome judgement (separate from the criteria summary, per Arturs's Clarification 3).** **Outcome C — the planner's plan was bad, in two distinct ways across two invocations.** Evidence:
+
+- Plan-1 violated the explicit "no placeholders" rule in the planner's system prompt (OUTPUT FORMAT section). The planner emitted a literal `[existing litigation/jurisdiction sentence - replace entirely]` as `target_text` — exactly what the prompt forbade.
+- Plan-2 wrote a specific sentence that did not match the NDA (`The Parties irrevocably submit ...` vs. actual `The parties submit ...`). The planner had access to the actual clause text in the invocation prompt; the hallucination means either (a) the planner did not consume the clause text (did not actually read it in context) or (b) the clause text did not reach the planner in the first place.
+
+Additional finding (not A/B/C — a new failure mode): **HOC dropped the §9 clause text when relaying the user's invocation to the planner.** Evidence by elimination: the planner's system prompt tells it to plan from the clause text the Head of Commercial passes in the task description; the planner's output contains no verbatim string matching the NDA's §9 text; therefore the planner did not have the clause text. This is consistent with 10D Surprise 3 (HOC paraphrases specialist-facing content). The planner's system prompt explicitly says *"The Head of Commercial passes the clause text in your task description — that is what you plan against"* — but HOC's relay did not honour it. See Surprise 1 below for implications.
+
+**Outcome C's finding differs from what the brief framed as a frontier-model decomposition test.** The brief anticipated Outcome C as *"GPT-5.4 fails to decompose autonomously"* — decomposition being the open question. What this sprint actually shows is that GPT-5.4 *was never given the input it needed to decompose*: HOC ate the clause text on relay, and the planner's response is consistent with having only the instruction ("convert litigation to arbitration in Clause 9") and not the clause itself. The decomposition-capability question remains untested in 10H — we have not falsified or confirmed GPT-5.4's ability to decompose this transformation; we have falsified the architectural assumption that HOC would relay complex inputs verbatim to a planner specialist on MiniMax.
+
+**Surprises new to this sprint (not in 10A–10G):**
+
+1. **HOC drops clause text when relaying to the planner — the risk-ledger #5 mitigation is empirically insufficient.** The plan's risk ledger flagged "planner has no NDA text to plan over" with the mitigation *"HOC relays verbatim"*. The HOC prompt contained an explicit instruction: *"When you call (a), include BOTH the transformation instruction AND the verbatim clause text that the user supplied in the original task. The planner needs the clause text to plan over."* MiniMax HOC did not comply. Consistent with the 10D paraphrasing hazard escalating from "adds hallucinated context" to "omits critical context". Observability note: **the current capture infrastructure cannot directly confirm this — the `_HocInvocationCapture` handler filters for `subagent_type="redline-executor"` only; HOC's planner invocations went unrecorded.** The inference is circumstantial (planner output cannot contain text the planner did not have) but convergent (both planner messages hallucinate the clause text in different ways). A stronger capture (filter for BOTH planner and executor invocations, or filter off entirely and partition after the fact) is the 10I observability improvement. **Critical architectural implication:** Shape A under HOC as specified in the plan is NOT viable on a MiniMax HOC — the "HOC passes complex input verbatim" assumption fails empirically. Solutions (mapped in the 10I proposal): bypass HOC for the planner leg entirely (Python orchestrates planner→executor); or inject the clause text into the planner's system prompt at build time (the factory closes over the clause text, the planner's task description carries only the instruction); or swap HOC to a frontier model (violates the cost profile the split was designed to preserve).
+
+2. **MiniMax HOC loops on failure and confabulates a filesystem narrative at the relay to GC.** After the executor ERROR'd on plan-2, HOC did not pass the ERROR up cleanly; instead it emitted to GC: *"the `redline-executor` returned an explicit error: the target text was not found in the document, and a subsequent filesystem search confirmed the file `/sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx` does not exist — only `plan-error.json`"*. There was no filesystem search (HOC has no filesystem tool and the capture shows zero filesystem calls). There is no `plan-error.json` anywhere in the sandbox. HOC fabricated both. The OPERATING DISCIPLINE preamble in HOC's prompt forbids exactly this ("You MUST NOT claim that a file is missing, invalid, unreadable, or does not exist") — HOC violated it at the relay layer. Reinforces 10D Surprise 3, 10F carry-forward (iii), 10G carry-forward (i): **MiniMax orchestrators, under stress, fabricate grounding statements that look domain-plausible even with explicit prompt-level prohibitions.** TODO.md item 8 ("HOC output-envelope hardening") now has a third concrete manifestation.
+
+3. **The executor refused plan-1 without calling a tool.** Plan-1's `target_text` was `[existing litigation/jurisdiction sentence - replace entirely]` — structurally a valid JSON string, passing the executor's malformed-plan checks (no fenced-block absent, no JSON parse error, no missing required fields, no wrong-field-for-tool errors). MiniMax nevertheless emitted zero tool calls for plan-1 (visible in `tool-calls.jsonl` — only one call total across both invocations, and it corresponds to plan-2). The executor's reply for plan-1 is buried in HOC's internal state and not visible to our captures; HOC then re-invoked the planner. **This is better behaviour than the malformed-plan discipline explicitly prescribes** — the executor recognised that a bracketed placeholder-shaped string is not a real span target and refused. Encouraging: MiniMax's pattern-matching caught a failure mode the prompt's rule-based checks did not enumerate. Carry-forward (watch, don't bank on it): informal reliance on MiniMax to catch placeholder-shaped plans is not a durable design choice — the planner's output-discipline is the right layer for that check.
+
+4. **GPT-5.4's planner emitted plan-2 with grammatical discrepancy from the actual NDA.** Plan-2's `target_text` capitalised "Parties" (the NDA has "parties" lowercase), inserted "irrevocably" that isn't in the NDA, and truncated before "for the resolution of all disputes ...". This is NDA-drafting stylistic convention — GPT-5.4 wrote what a typical English-law NDA §9 forum-submission sentence *would* look like, not what this specific NDA does say. Indirectly confirms the clause-text-was-not-relayed finding (surprise 1 above): if the planner had the text, it would not introduce these plausible-but-wrong details. Informative that the planner's hallucination is domain-faithful (all five arbitration elements in `new_text` are correctly named) but byte-level-faithless — the same failure mode 10F flagged at the executor layer, now at the planner layer. Decomposition is not the only place capability matters; byte-fidelity on span locators is a distinct capability.
+
+5. **17-part output zip (vs. 21 in 10D/E/F/G).** `verify_output` reports 17 parts for the primary's `nda-output.docx`. 10B surprise #1 established that `CommentsManager` eagerly creates 4 comments-related parts whenever `RedlineEngine` runs an edit (even without comments). Zero edits ran to completion in the primary → 4 comments parts were never created → 17 parts, not 21. Net effect: the output is byte-equivalent to the input (38,795 bytes vs. input's 38,795 bytes). **Mechanical verification of "no work happened" is visible in part count.** New diagnostic signal; useful for any future sprint where a zero-edit outcome might otherwise look like "file exists, zip parses, probably OK".
+
+**Expected friction observed (from the plan's risk ledger):**
+
+| # | Friction anticipated | What actually happened |
+|---|----------------------|------------------------|
+| 1 | Planner produces JSON outside the fenced block | Did NOT happen. Both planner emissions produced well-formed fenced ```json blocks. |
+| 2 | Embedded quotes / JSON-strict escape issues | Did NOT happen. All JSON parsed cleanly on the executor side. |
+| 3 | Executor paraphrases plan's text | Did NOT happen. Plan-2 → one tool call, byte-identical args. |
+| 4 | HOC bundles the plan-relay step | Did NOT happen at the HOC→executor step (verified via `hoc-invocations.jsonl`). HOWEVER: HOC bundled/dropped the user's clause text at the GC→HOC→planner step — different hop, same failure-shape. Mitigation was scoped to the wrong hop. |
+| 5 | **Planner has no NDA text to plan over.** Mitigated by "HOC relays verbatim." | **Bit hardest.** Mitigation failed empirically. HOC did not relay the clause text. The design's single-point-of-failure. |
+| 6 | Executor gets plan but not file path | Did NOT happen. HOC's invocation included the path verbatim. |
+| 7 | Adeu `BatchValidationError` on one entry | Happened (on plan-2's hallucinated target). Executor handled per discipline (stop + report ERROR). |
+
+Observation: the sprint's risk ledger under-weighted risk #5. It was listed as fifth of seven with a single-line mitigation; it was in fact the single-point-of-failure, and the mitigation was empirically insufficient. The broader lesson: **"HOC will relay verbatim" is a recurring architectural assumption that keeps failing.** It failed in 10D (added hallucinated narration), kept failing in 10E/10F/10G (carry-forward), and failed this sprint at a new and more destructive hop (dropped rather than added). TODO.md item 8 is due for promotion to a must-fix-before-Shape-A-goes-anywhere level.
+
+**Assessment.** Shape A as specified in the approved plan does not work on this architecture. The specific failure is **not** (as the brief primarily anticipated) "GPT-5.4 cannot decompose autonomously" — the decomposition question remains untested because the planner did not receive the input it needed to plan against. The failure **is** "MiniMax HOC cannot reliably relay complex text payloads verbatim to downstream specialists, even when explicitly instructed to." The plan data contract itself is sound (control run proves the executor consumes it correctly). The executor's pure-execution discipline is intact (control run). What is broken is the HOC relay to the planner.
+
+**Sprint 10I proposal — route around the HOC relay.** Two approaches, not mutually exclusive:
+
+*(1) Inject the clause text into the planner's system prompt at build time.* The experiment harness reads the NDA's §9 paragraph (by whatever document-extraction is available) and closes over it in the planner spec's `system_prompt`. HOC's task to the planner carries only the transformation instruction ("convert litigation to arbitration"); the planner reads the clause from its own system prompt. This bypasses HOC's text-relay unreliability at the cost of coupling the planner to a specific clause at factory time. For a single-transformation experiment (Sprint 10I's first pass), this is tolerable. For multi-transformation production, the planner would need a clause-extraction tool — but that is a future-sprint concern.
+
+*(2) Orchestrate the planner→executor handoff in the experiment harness rather than through HOC.* Python invokes the planner directly (not via HOC's `task` tool), captures the plan, and invokes the executor (either via HOC or directly) with the plan in hand. HOC is reduced to routing "this is a redline task" to a Python orchestrator rather than choreographing the planner→executor handoff itself. Architecturally closer to Shape B's "code orchestrator" pattern without going all the way to code-level execution.
+
+Sprint 10I writes one or both of these and re-runs. If the planner produces a lawyer-shape decomposition given a clean input (approach 1) or a clean orchestration (approach 2), we will finally have tested the brief's original question: can GPT-5.4 decompose this transformation autonomously. If yes, the split is productising (ADRs 019-021 land). If no, 10J becomes the Shape B port (word-diff pipeline, LLM planner + code executor).
+
+Second-priority work for 10I: expand `_HocInvocationCapture` to record **all** HOC task calls (not just executor invocations), so future HOC-relay failures are directly visible rather than inferred by elimination.
+
+**No new ADRs.** ADRs 019 (planner/executor split pattern), 020 (plan data contract), 021 (specialist-tier model allocation) were queued to land in this sprint IF Shape A produced lawyer-shape output. Shape A did not produce lawyer-shape output on the primary run, so the decisions those ADRs would record are premature to land as Accepted. Sprint 10I re-tests Shape A with HOC routed around; if that succeeds, the ADRs land then. The plan data contract itself is validated by the control run — but an ADR on a contract that hasn't been exercised end-to-end is weak; fold into 10I's ADR work.
+
+**No new dependencies, no policy widenings.** `requirements.txt` unchanged at 119 pinned packages. Network policy untouched.
+
+**New env-var triples** (committed to `.env.example` and `docs/secrets.md` on the feature branch — not yet on main; Sprint 10I or the next successful Shape-A sprint will land them on main):
+
+- `OSCAR_LLM_REDLINE_PLANNER_{PROVIDER,MODEL,API_KEY}` — planner (frontier; this run: `openrouter` / `openai/gpt-5.4`).
+- `OSCAR_LLM_REDLINE_EXECUTOR_{PROVIDER,MODEL,API_KEY}` — executor (specialist-tier rename of `OSCAR_LLM_REDLINE_SPECIALIST_*`; this run: `minimax` / `MiniMax-M2.7`).
+
+The old `OSCAR_LLM_REDLINE_SPECIALIST_*` triple remains in `.env.example` and `docs/secrets.md` on main (orphaned but kept until 10I confirms the rename).
+
+**Carry-forward notes.**
+
+(i) HOC paraphrasing hazard — **biting harder than prior sprints**. Fourth manifestation (10D added narration; 10F HOC-faithful; 10G HOC-faithful but bundled its own reasoning; 10H both dropped input on ingress AND fabricated filesystem narrative on egress). Promote TODO.md item 8 to must-fix-before-Shape-A level. Candidate implementations: (a) route HOC's relay-to-specialist calls through a code wrapper that enforces verbatim pass-through; (b) replace MiniMax HOC with a frontier HOC for redlining tasks only (subverts the cost model but may be the narrow price of the split); (c) swap the architecture so HOC does not route complex text — Python orchestrates (the 10I approach (2) above).
+
+(ii) The `_HocInvocationCapture` should filter ALL task calls, not just executor invocations. The planner-call-capture would have made Surprise 1 direct evidence rather than by-elimination inference. 10I fix.
+
+(iii) Byte-level fidelity between planner-input and executor-on-disk (plan's Forward Concerns section, Arturs's Addition 2). Pre-emptive; not yet bitten directly. Still a concern for future non-synthetic inputs. Filed as TODO.md candidate (added below).
+
+(iv) Arturs's standing review items (Word review of 10E output; `adeu-lawyer-shape-criteria.md` sign-off; 10F/10G feature-branch merge decisions; the four 10C open questions) — all still outstanding.
+
+**Next sprint picks up from:** a feature-branch artefact showing (a) a working control run (executor on 10E's spans under the 10H plan contract — identical shape to 10E's output); (b) a primary run that produced zero tracked changes because the planner did not receive the clause text from HOC; (c) the HOC-drops-complex-input finding, which invalidates the plan's risk-ledger #5 mitigation; (d) a Sprint 10I proposal with two candidate approaches to routing around HOC; (e) the architectural observation that the decomposition-capability question (frontier vs. cheaper) remains untested because the test was confounded by HOC-layer behaviour. Natural next directions:
+
+(a) *Sprint 10I as proposed above.* Route around HOC for the planner's input leg. Either inject clause text into planner's system prompt at build time, or have Python orchestrate the planner→executor handoff. Re-test the primary end-to-end. Actually test the GPT-5.4 decomposition-capability question with a clean input.
+
+(b) *Short-circuit to Shape B (code-executor).* Only sensible if we believe GPT-5.4 would also bundle or hallucinate given a clean input. We don't have evidence for that belief — the 10H run's hallucination was plausibly a consequence of missing clause text, not a decomposition failure. Defer Shape B until 10I clarifies.
+
+(c) *HOC-as-frontier pilot.* Run a single experiment with HOC on GPT-5.4 (swap `OSCAR_LLM_HEAD_OF_COMMERCIAL_{PROVIDER,MODEL}` to OpenRouter / openai/gpt-5.4), same Shape A, same NDA, same transformation. Three-way diagnostic: frontier HOC fixes it → HOC text-fidelity is the blocker, escalate model-allocation thinking; frontier HOC also drops the clause text → something structural in Deep Agents' task-tool path; frontier HOC bundles at HOC layer → a different failure. This is a cheaper 10I option if 10I approach (1) and (2) both prove complicated.
+
+(d) *Expand `_HocInvocationCapture` to all subagents* — small observability fix, independent of architectural direction. Worth landing as a housekeeping commit even if 10I goes a different way.
+
