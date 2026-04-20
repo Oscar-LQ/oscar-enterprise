@@ -1132,3 +1132,153 @@ Additional defensive add (not in the original plan but cheap): a module-level `_
 
 (d) *HOC output-envelope hardening.* Tighten HOC's "relay verbatim" rule and/or have the specialist return a JSON envelope (`status`, `output_path`, `summary`) that HOC reads literally — deferred 10D (iii) carry-forward.
 
+### Sprint 10F — 2026-04-20 — Identification test: can MiniMax find the surgical spans itself, or does it need 10E's hand-wired decomposition?
+
+**Goal.** Sprint 10E proved MiniMax can EXECUTE a surgical-span decomposition when the prompt hands it byte-identical CALL 1 / CALL 2 values. 10F removes that scaffolding. The specialist is given the general surgical-span rule and the target shape (LCIA arbitration with five named elements — seat London, LCIA Rules, sole arbitrator, English language, final-and-binding), but NOT the specific phrases in the existing document. The open question, explicitly named in 10E's scope boundary: can MiniMax read §9, decide which phrases need to change, and apply narrow tracked-change edits without being told the spans? Production Oscar cannot carry per-transformation CALL 1 / CALL 2 values — a user asking "convert litigation to arbitration" expects the specialist to make that decomposition decision autonomously. If 10F fails, identification is beyond MiniMax's reach at this shape and the next step is a model swap to GPT-5.4 (Sprint 10G).
+
+**Done — partial result. Mechanical checks pass; span-selection quality passes on content (all five elements present, coherent clean view, audit trail preserved); decomposition shape fails (one wide substantive call + one no-op, not a 10E-style 2-to-4 narrow calls).** Two iterations. Iteration 1 reproduced Sprint 10D iteration-1's hallucinate-missing-file failure at the specialist layer: with 10E's explicit CALL 1 / CALL 2 crutch removed, MiniMax had no definite instruction to anchor on and defaulted to "the directory and file do not exist in the filesystem" — zero tool calls, no attempt at the task. Iteration 2 (the allowed one minimal fix) added an OPERATING DISCIPLINE section to the specialist prompt forbidding missing-file claims and telling the specialist to reason from commercial-NDA drafting priors and let the tool's ERROR return guide adjustment; this is the same-shape fix Sprint 10D iteration 2 applied to HOC, now needed on the specialist because the specialist is now the one doing open-ended reasoning.
+
+Artefacts (feature branch only, per brief's "do not commit failing attempt to main" rule): `src/experiments/sprint-10f/{run.py, build_input.py, nda-input.docx, nda-output.docx, transcript.txt, tool-calls.jsonl}`.
+
+**The specialist's two tool calls — verbatim, as captured by the tool implementations during iteration 2** (source: `tool-calls.jsonl`; promoted here per 10E's discipline because these are the single most informative artefact — they tell us what MiniMax decided to do when the decomposition was left to it):
+
+```
+CALL 1: modify_text(
+    target_text="submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes",
+    new_text="irrevocably submit to binding arbitration under the LCIA Rules, seated in London, England, conducted in the English language, and administered by one sole arbitrator, such arbitration being final and binding on the parties, for the resolution of all disputes",
+    comment="",
+)
+
+CALL 2: modify_text(
+    target_text="exclusive jurisdiction of the courts of England and Wales",
+    new_text="exclusive jurisdiction of the courts of England and Wales",
+    comment="",
+)
+```
+
+CALL 1 is a modify_text where `target_text` is 18 words and `new_text` is 43 words. The engine's `trim_common_context` narrows the shared suffix "for the resolution of all disputes" and leaves the shared prefix "submit to " — after narrowing, the OOXML shows a 12-word `w:del` and a 33-word `w:ins` (see inspection below). It bundles **all** of the substantive change — the forum swap AND the seat/rules/arbitrator/language/finality machinery — into a single tool call.
+
+CALL 2 is a degenerate no-op: `target_text == new_text == "exclusive jurisdiction of the courts of England and Wales"`. After CALL 1 emitted its `w:del`, that phrase no longer exists in the document's live text (it is inside a struck-through `w:delText`), so the engine found nothing to modify and the call produced zero OOXML — consistent with the observed `w:ins=1, w:del=1` final state. The call is structurally harmless but informative: MiniMax's second act was a confused "verify the change by re-applying the same text to itself" attempt rather than a second surgical edit. This was NOT a retry of CALL 1 (target differs); it is its own shape of specialist confusion with no 10D parallel.
+
+**Scope framing — 10F tests IDENTIFICATION (this sprint) not EXECUTION (10E).** The 10E sprint handed MiniMax exact target/new/anchor values; this sprint withheld them and tested whether MiniMax could read §9 and decide the decomposition itself. **The result is mixed: MiniMax identified the clause correctly (it found the forum sentence, not some other part of §9) and identified the five required arbitration elements correctly (all present in the clean-view output). It did NOT identify a sensible multi-call decomposition — it bundled into one wide `modify_text` where 10E's hand-wired plan produced two narrow calls.** The finding is: identification at the clause level is within MiniMax's reach; identification at the span-decomposition level is not.
+
+**OOXML inspection — mechanical criteria (same four as 10E):**
+
+```
+w:del id=1  author=Oscar  words=12
+  text: "submit to the exclusive jurisdiction of the courts of England and Wales"
+
+w:ins id=2  author=Oscar  words=33
+  text: "irrevocably submit to binding arbitration under the LCIA Rules,
+         seated in London, England, conducted in the English language,
+         and administered by one sole arbitrator, such arbitration being
+         final and binding on the parties,"
+
+w:ins w:del totals: w:ins=1, w:del=1, 21 parts, 40,265 bytes, parses.
+```
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | `w:ins`/`w:del` narrowly scoped? Any span >20 words suspicious; >50 almost certainly wrong. | `w:del` 12 words (clean), `w:ins` 33 words (SUSPICIOUS — flagged by `verify_output`'s >20-word warning). Not as wide as 10D's 47-word both-sides shape, but wider than 10E's 30-word-for-machinery-sentence because the 10F `w:ins` bundles both the forum swap AND the machinery where 10E split them. |
+| 2 | Original text preserved inside `w:delText` (no nested empty-delText pattern)? | YES. `w:del` id=1 contains the 12-word litigation phrase. No nested `w:del`. No empty `w:delText`. |
+| 3 | Duplicate insertions? | NO. One w:ins. |
+| 4 | Document opens cleanly (valid zip, parseable XML)? | YES. 21 parts, parses. |
+
+**10F-specific assessments (new this sprint per brief):**
+
+- **Span selection quality:** content PASS, shape PARTIAL. Content — the clean-view (Accept-All) §9 reads as a complete arbitration clause naming all five required elements (`FOUND: seat London`, `FOUND: rules LCIA`, `FOUND: sole arbitrator (one)`, `FOUND: language English`, `FOUND: final and binding` — from the arbitration-shape spot-check in `run.py::check_arbitration_shape`). The governing-law sentence is intact. Grammar is well-formed. Shape — the 33-word `w:ins` bundles elements that 10E split into a separate `insert_text` sentence. A lawyer reviewing in Word would see one narrow deletion (good) and one wide substantive insertion (less surgical than 10E but still readable).
+- **Number and shape of tool calls:** 2 calls, but one is a no-op — effectively 1 substantive call. The decomposition is "1 wide edit", not "2-4 narrow edits". Per the 10F plan's failure-mode table, this is "too wide" — the category the brief flagged as a structural fail. The specific shape is asymmetric (narrow del, wide ins) rather than 10D's symmetric wide-both-sides, but it confirms MiniMax does not spontaneously decompose.
+
+**Clean-view (Accept-All) read-back of §9** (from `extract_text_from_stream(..., clean_view=True)`):
+
+> 9. Governing Law and Dispute Resolution
+>
+> This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties **irrevocably submit to binding arbitration under the LCIA Rules, seated in London, England, conducted in the English language, and administered by one sole arbitrator, such arbitration being final and binding on the parties, for the resolution of all disputes arising out of or in connection with this Agreement**.
+
+Governing-law sentence intact. Arbitration provision names all five required elements. Grammatically well-formed — arguably slightly denser than 10E's two-sentence split ("…under the LCIA Rules. The seat of arbitration shall be London …") but substantively equivalent.
+
+**Research findings — Phase 1 re-check on Claude-Plugin-MCP identification guidance.** Re-read `skills/negotiate-contract/SKILL.md` Step D1 (lines 648-689) specifically for identification guidance; also checked Step B ("Analyse the Contract"), Step D ("Build the Edit List"), and a full-file grep for identification/decomposition/find-span keywords. **Finding: Claude-Plugin-MCP does NOT explicitly teach span-level identification.** It teaches:
+  - Step B clause-level analysis ("does this clause need changes?") — a clause-level filter.
+  - Step D presupposes the agent already knows what it wants to change ("For each clause needing changes, create an edit dict with `target_text`, `new_text`").
+  - Step D1 edit-precision rules — for SIZING a target_text the agent already knows it wants (5-15 words, short as uniquely matchable). The WRONG/RIGHT examples (lines 669-689) show the agent already knows which phrase to edit (e.g. "either party" → "Disclosing Party") and teach it to draw the narrow boundary around that known phrase.
+
+A grep for identification keywords across all 805 lines returned five hits, none about span-level identification. The top-level framing at line 19 — "evaluate the document, decide what changes to make" — is the most identification-relevant line and it's a one-liner. **Interpretation: Claude-Plugin-MCP relies on Opus's implicit judgement to bridge from "clause needs changes" to "here are the exact {target_text, new_text} pairs". It does not try to teach that bridge.** There was no explicit identification discipline to import; the 10F prompt could only offer framing ("read the clause, decide what needs to change, apply narrow edits") plus shape guardrails. 10F's result is informative precisely because Claude-Plugin-MCP's approach (rely on model judgement for identification) only works when the model has frontier-level judgement.
+
+**The 10F prompt — key sections vs. 10E** (see `src/experiments/sprint-10f/run.py::redline_specialist_prompt`):
+
+- OUTPUT DISCIPLINE — unchanged from 10E.
+- **OPERATING DISCIPLINE — new in 10F iteration 2.** Added after iteration 1 hit the hallucinate-missing-file failure. Tells the specialist it has no filesystem read access, cannot claim files are missing, and must proceed tool-only by reasoning from NDA-drafting priors and using the tool's ERROR return as its feedback channel. Same shape as Sprint 10D iteration-2's HOC fix, moved down one level because the specialist is now the one doing open-ended reasoning.
+- NO-RETRY RULE — unchanged. Kept as an execution guardrail (prevents 10D nested-delete regression even though 10F doesn't exercise the retry path).
+- THE TASK — softened. 10E said "from litigation (exclusive jurisdiction of the courts of England and Wales) to binding LCIA arbitration" — the parenthetical pre-identified the forum phrase. 10F says only "from litigation to binding LCIA arbitration" so the specialist cannot copy the target phrase directly out of the system prompt.
+- SHAPE OF THE ARBITRATION LANGUAGE — unchanged (the five required elements are what a user would tell the specialist).
+- SURGICAL-SPAN RULE — unchanged (execution discipline, still applies).
+- **HOW TO APPROACH THIS TRANSFORMATION — replaces 10E's DECOMPOSITION FOR THIS TRANSFORMATION block.** Does NOT supply CALL 1 / CALL 2 values. Uses Arturs's approved shape-only wording: "One wide tool call is the wrong shape … many tiny fragment calls is also the wrong shape … you are making a small handful of narrow edits that together transform the clause." No count range; no specific phrases.
+- WRONG example (Sprint 10D's wholesale-swap failure) — kept. It is a shape warning pointing away from a concrete failure mode, not toward a specific right answer.
+- 10E's RIGHT example (that named "~11-word forum phrase" and "the closing full stop") — REMOVED. Too specific to 10E's decomposition.
+- Final-reply template — unchanged apart from wording ("When your edits together produce a complete arbitration provision with all five required elements, reply exactly: …").
+
+**Iteration history — budget spent (2/2).**
+
+*Iteration 1.* Specialist made ZERO tool calls; reported "the directory and file do not exist" to HOC. Same shape as Sprint 10D iteration 1's failure, now at the specialist layer instead of HOC's. Root cause: with 10E's CALL 1 / CALL 2 crutch removed, MiniMax had no definite instruction to anchor on and defaulted to fabricating a plausible-sounding excuse rather than attempting open-ended reasoning from its NDA-drafting priors. The system prompt told it to "Read Clause 9 … decide which phrases need to be replaced" — but MiniMax interpreted "read" as "open the file" and hallucinated the failure when it couldn't.
+
+*Iteration 2 (the one minimal fix allowed by the iteration budget).* Added the OPERATING DISCIPLINE section to the specialist prompt. After the fix, specialist made two tool calls, produced a structurally-valid and content-complete arbitration provision, but in a single wide `modify_text` rather than 10E's two-call surgical decomposition. Budget exhausted. Per brief: "If the agent fails structurally — … produces a 10D-shape wide swap, or does something stranger — STOP. Do not iterate into 10G territory within this sprint." The iteration-2 output is softer than "10D-shape wide swap" (the `w:del` is narrow) but firmer than "2-4 narrow edits" (the `w:ins` bundles all five elements). It is the in-between outcome the 10F plan flagged as "acceptable-with-caveat" — but because the decomposition shape is what 10F was meant to test, caveat-qualified shape is a 10F failure even if the content is acceptable.
+
+**Surprises new to this sprint (not in 10A-10E):**
+
+1. **MiniMax's default under unguided prompts is to hallucinate a plausible-sounding excuse.** Sprint 10D iteration 1 had HOC claiming the file didn't exist; Sprint 10F iteration 1 had the specialist doing the same thing. Both fixes were the same shape (discipline clause forbidding the specific hallucination and redirecting to tool-only operation). This generalises: **whenever a MiniMax-backed agent in Oscar is given an open-ended task without a definite shape to execute, it will default to fabricating an excuse unless the prompt explicitly forbids that behaviour and tells it how to proceed.** For production Oscar, this means every specialist needs an OPERATING DISCIPLINE section covering its tool surface and its feedback channels — not optional. Carry-forward: fold this into a reusable discipline template when the second call site appears (expected in Sprint 10G or whenever another specialist joins HOC).
+
+2. **MiniMax identifies the clause and the content correctly, but bundles rather than decomposes.** The arbitration-shape spot-check reports FOUND for all five elements (seat, rules, arbitrator, language, finality); the clean-view §9 reads as a coherent arbitration clause; the forum phrase was correctly identified as the region to replace. What MiniMax did NOT do was split the change into "replace forum phrase" + "add machinery as a separate sentence" (10E's shape). Instead it absorbed both into one `new_text`. This is a narrower failure than "can't identify anything" — it is specifically a **decomposition** failure, not a full identification failure. The distinction matters for 10G's framing.
+
+3. **MiniMax's second tool call was a no-op duplicate rather than a second surgical edit.** `modify_text(target_text=X, new_text=X)` is degenerate; the engine finds nothing to change and emits no OOXML. MiniMax's apparent intent was some kind of verification or confirmation act. No 10D/10E parallel. Carry-forward: a future specialist-wrapping tool could detect and reject `target_text == new_text` with an ERROR, saving a spurious round trip, but the cost is low and the diagnostic value of seeing the no-op surfaces specialist confusion. Not worth wrapping until a second occurrence.
+
+4. **`trim_common_context` produced an asymmetric narrow-del/wide-ins shape.** Because CALL 1's target and new_text shared the suffix "for the resolution of all disputes" and the prefix "submit to " (partial), the engine trimmed those from the OOXML — leaving a 12-word `w:del` (narrow) and a 33-word `w:ins` (wide). This is a shape 10C's reference battery didn't surface because the 10C tests exercised symmetric shared-prefix or shared-suffix cases; asymmetric narrow-del/wide-ins is the shape that appears when the new text includes new machinery the old text didn't have. Not a bug; a mechanical consequence. Documenting for the idioms doc.
+
+**Expected friction observed (from the plan):**
+
+| # | Friction anticipated | What actually happened |
+|---|----------------------|------------------------|
+| 1 | MiniMax produces 10D-shape wholesale swap (>40 word w:del/w:ins bilateral) | Partially. `w:ins` is 33 words (suspicious, not over-50); `w:del` is narrow (12 words). Not as bad as 10D; not as good as 10E. |
+| 2 | MiniMax fragments into 8+ tiny edits | Did NOT happen. Only 2 calls (one a no-op). |
+| 3 | MiniMax picks wrong spans (narrow-but-incorrect) | Did NOT happen. Span content is correct (all five elements present). |
+| 4 | MiniMax matches 10E shape without scaffolding | Did NOT happen. This was the best-case hypothesis; 10F falsifies it. |
+
+**Assessment.** Sprint 10F answers its question with nuance. MiniMax CAN identify the clause and the required content autonomously — it found the forum sentence and enumerated all five arbitration elements correctly. MiniMax CANNOT autonomously produce the surgical 2-to-4-call decomposition that 10E demonstrated with explicit scaffolding. When left to decide the decomposition itself, MiniMax bundles into one wide substantive call + one confused no-op. The output is lawyer-usable (the clean-view §9 is a coherent arbitration clause with all five elements, the audit trail is preserved, no nested-delete pathologies) but not surgical. For production Oscar, this means the redline specialist on MiniMax cannot handle open-ended transformations without pre-decomposition scaffolding; either the scaffolding exists (per-transformation playbook entries with phrase-level targets), or a stronger model does the decomposition, or the decomposition is done in code around the model (the Claude-Plugin-MCP approach).
+
+**Feature-branch-only commit, per brief's unsuccessful-sprint discipline.** The iteration-2 output is lawyer-usable but not shape-surgical, and the iteration-budget has been spent; per brief, "do not commit failing attempt to main" — this entry and artefacts live on a `sprint-10f-identification-test` feature branch for inspection. Arturs decides whether to merge (e.g. if he accepts the wider shape as good enough for production given the content correctness) or leave on the branch while 10G's model-swap diagnostic runs.
+
+**10G proposal — specific diagnostic path** (per brief's "fallback if 10F shows identification is beyond MiniMax's reach"):
+
+Same 10F prompt (including the OPERATING DISCIPLINE iteration-2 fix), run the redline specialist against `openai/gpt-5.4` via OpenRouter. Change one env-var triple — `OSCAR_LLM_REDLINE_SPECIALIST_{PROVIDER,MODEL}` → `openrouter` / `openai/gpt-5.4` — nothing else. The `get_chat_model` DI seam (Sprint 4) handles the swap with zero graph-code changes. No ADR expected (per ADR 008 the DI seam is designed for exactly this).
+
+Three-way diagnostic (matching 10E's structure):
+
+- **GPT-5.4 produces the 10E-shape surgical decomposition** (2-4 narrow calls, `w:ins`/`w:del` ≤20 words each, all five elements present). Finding: identification-level decomposition is a frontier-model capability. Architectural implication: PROJECT.md's Model Allocation principle ("specialists on capable-but-cheaper models") has a carve-out for identification-heavy specialists — or identification and execution are split across a two-tier specialist (frontier model decomposes, MiniMax executes). ADR candidate in 10G.
+- **GPT-5.4 also bundles** (1 wide substantive call + no-op second, or similar). Finding: identification-level decomposition is beyond current off-the-shelf LLMs on this problem shape. Next step is 10H — port Claude-Plugin-MCP's code-level word-diff pipeline (`src/pipeline/word_diff.py` + `surgical_edit.py`) so the LLM produces one coherent `{target_text, new_text}` pair per intended change and the pipeline computes the narrow `w:del`/`w:ins` in code. Substantial scope.
+- **GPT-5.4 somewhere in between** — e.g. 3 calls, coherent but not quite 10E shape. Finding: the model gradient exists; a graduated specialist tier or two-stage prompt (frontier identifies → MiniMax executes) becomes the design space. Further research.
+
+**Carry-forward notes.**
+
+(i) HOC paraphrasing hazard (10D carry-forward iii, 10E carry-forward i) — did not bite this sprint (HOC's relay was faithful). Remains open.
+
+(ii) Arturs's review of `adeu-lawyer-shape-criteria.md` (10D carry-forward v, 10E carry-forward ii) — still outstanding. 10F self-verified against the 10F brief's criteria directly, not the 10C draft doc.
+
+(iii) **New carry-forward — OPERATING DISCIPLINE preamble for specialists.** Second occurrence of the hallucinate-missing-file failure confirms this is a general MiniMax trait. When a third specialist joins Oscar (post-10G), promote this preamble to a shared template in `src/experiments/common/` or the redline-specialist's own library module. Premature to extract now (two call sites, different specific wording); flag for the third.
+
+(iv) Comment capability (10D carry-forward iv) — not exercised in 10F (neither call used `comment`). Remains open.
+
+(v) **New carry-forward — tool-level rejection of degenerate `target_text == new_text`.** MiniMax's iteration-2 no-op CALL 2 was harmless but diagnostic of specialist confusion. If a similar no-op appears in 10G or subsequent sprints, wrapping `modify_text` to reject degenerate calls (returning `ERROR: target_text is identical to new_text — no change to apply`) may be worth a facilitator under ADR 018's four-test rule. Single-occurrence is not enough; flag for the second.
+
+**No new ADRs.** The OPERATING DISCIPLINE addition is prompt refinement, not architecture. The model-swap-for-identification choice is deferred to 10G; if 10G produces the 10E-shape decomposition, the "identification tier requires a frontier model" finding becomes an ADR in 10G.
+
+**No new dependencies, no policy widenings, no env-var changes.** `requirements.txt` unchanged at 119 pinned packages. Network policy untouched. The `OSCAR_LLM_REDLINE_SPECIALIST_*` triple reused unchanged from 10D. 10G will flip the PROVIDER/MODEL values of that same triple; no new slots are added.
+
+**Next sprint picks up from:** a feature-branch artefact showing partial identification (clause found, elements found) without decomposition (one wide call, one no-op), a scope boundary more precisely characterised than 10E's ("identification-at-clause-level" vs "identification-at-span-decomposition-level" — 10F proves the first, refutes the second for MiniMax), and a specific diagnostic path (10G = model swap with three-way outcome). Natural next directions:
+
+(a) *10G as proposed above.* Most direct test of whether frontier-model judgement produces the 10E-shape decomposition. Same NDA, same transformation, same prompt (including the 10F iteration-2 OPERATING DISCIPLINE fix) — only the specialist's env-var triple changes. Three outcomes mapped above.
+
+(b) *Short-circuit 10G and go to 10H (code-level word-diff pipeline).* Only sensible if there's strong prior belief that no off-the-shelf LLM can decompose; 10F alone doesn't justify that belief — GPT-5.4 remains untested on this shape.
+
+(c) *Revisit the 10F prompt design at the approval stage.* If Arturs decides on review that the iteration-2 output is actually good enough for production (coherent content, preserved audit trail, one wide insertion he can live with), 10F becomes a successful sprint after all and 10G shifts from "does a stronger model succeed?" to "does a stronger model produce a better output at the margin?". That reframing belongs in the human-review step, not this entry.
+
+(d) *Expand test coverage to a second transformation (T1 make-mutual or T2 add-LoL).* Defer until identification-shape is settled on T3 (this transformation).
+
