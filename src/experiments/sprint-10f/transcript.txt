@@ -1,0 +1,61 @@
+========================================================================
+Sprint 10F — transcript
+========================================================================
+
+INVOCATION:
+Please convert the dispute resolution clause in the attached NDA from litigation to arbitration. Keep the governing-law sentence (England and Wales) intact; change only the jurisdiction/dispute-resolution sentence. The NDA is at /sandbox/oscar-enterprise/src/experiments/sprint-10f/nda-input.docx.
+
+--- GC MESSAGE TRACE ---
+   1. [HumanMessage] Please convert the dispute resolution clause in the attached NDA from litigation to arbitration. Keep the governing-law sentence (England and Wales) intact; change only the jurisdiction/dispute-resolution sentence. The NDA is at /sandbox/oscar-enterprise/src/experiments/sprint-10f/nda-input.docx.
+   2. [AIMessage tool_calls=task(['description', 'subagent_type'])] 
+   3. [ToolMessage name='task'] **Summary of exact clause change made**  Clause 9's dispute-resolution sentence was converted from a courts/litigation submission to a full LCIA arbitration clause. The governing-law sentence ("governed by and construed in accordance with the laws of England a
+   4. [AIMessage] Done. The NDA was updated to replace the litigation/courts submission sentence with an LCIA arbitration sentence, while keeping the governing-law sentence for England and Wales intact.  Output file: `/sandbox/oscar-enterprise/src/experiments/sprint-10f/nda-output.docx`
+
+--- GC task() subagent_types ---
+  head-of-commercial
+
+--- FINAL RESPONSE (GC → user) ---
+Done. The NDA was updated to replace the litigation/courts submission sentence with an LCIA arbitration sentence, while keeping the governing-law sentence for England and Wales intact.
+
+Output file:
+`/sandbox/oscar-enterprise/src/experiments/sprint-10f/nda-output.docx`
+
+--- SPECIALIST TOOL CALLS (VERBATIM) — count=2 ---
+  CALL 1: modify_text(
+    target_text='submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes',
+    new_text='irrevocably submit to binding arbitration under the LCIA Rules, seated in London, England, conducted in the English language, and administered by one sole arbitrator, such arbitration being final and binding on the parties, for the resolution of all disputes',
+    comment='',
+  )
+  CALL 2: modify_text(
+    target_text='exclusive jurisdiction of the courts of England and Wales',
+    new_text='exclusive jurisdiction of the courts of England and Wales',
+    comment='',
+  )
+
+--- MECHANICAL VERIFICATION ---
+  exists: /sandbox/oscar-enterprise/src/experiments/sprint-10f/nda-output.docx (40265 bytes)
+  valid zip with 21 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=1, w:del=1
+  WARN: w:ins[id=2] span=33 words — >20, suspicious (review against criteria)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText (original text is in the audit trail).
+
+--- CLEAN-VIEW §9 EXCERPT ---
+  9. Governing Law and Dispute Resolution
+  
+  This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties irrevocably submit to binding arbitration under the LCIA Rules, seated in London, England, conducted in the English language, and administered by one sole arbitrator, such arbitration being final and binding on the parties, for the resolution of all disputes arising out of or in connection with this Agreement.
+  
+  ## 10. General
+  
+  This Agreement constitutes the entire agreement between the Parties in relation to its subject matter and supersedes all prior communications, understandings, and agreements. No amendment of this Agreement shall be effective unless in writing and signed by authorised representatives of both Parties. This Agreement may be executed in counterparts, each of which shall be deemed an original, and all of which together shall constitute one and the same instrument.
+  
+  SIGNED for and on behalf of Acme Holdings Limited by an authorised representative.
+  
+  SIGNED for and on beha
+
+--- ARBITRATION-SHAPE SPOT-CHECK ---
+  FOUND: seat: London
+  FOUND: rules: LCIA
+  FOUND: sole arbitrator (one)
+  FOUND: language: English
+  FOUND: final and binding
