@@ -175,6 +175,7 @@ If you find yourself making an architectural choice mid-task without writing an 
 ## Git Discipline
 
 - **Commit at logical checkpoints.** Every sprint closes with a commit that includes its PROJECT.md sprint-log entry. Every ADR is committed alongside (or immediately before) the change it documents — an ADR that sits uncommitted is not a decision of record.
+- **Cross-sprint context files go to main directly.** PROJECT.md, SPRINT_LOG.md, CLAUDE.md, TODO.md, ADRs, and `docs/` do not ride on sprint feature branches. Only sprint-specific code and experiments land on feature branches and wait for sprint-outcome discipline to merge.
 - **Push after every commit** to `Oscar-LQ/oscar-enterprise`. The remote is the only audit trail that survives a sandbox reset — do not accumulate local commits.
 - **Commit messages state the why**, and reference the sprint number and ADR ID when relevant (e.g. `sprint-3: extract MemoryClient facade (ADR 007)`).
 
