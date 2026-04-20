@@ -1282,3 +1282,236 @@ Three-way diagnostic (matching 10E's structure):
 
 (d) *Expand test coverage to a second transformation (T1 make-mutual or T2 add-LoL).* Defer until identification-shape is settled on T3 (this transformation).
 
+### Sprint 10G — 2026-04-20 — Plan-before-act test: does a "plan first" prompt section close 10F's decomposition gap on MiniMax?
+
+**Goal.** Sprint 10F showed MiniMax identifies the right clause and recalls the five required arbitration elements, but bundles the transformation into one wide `modify_text` plus one degenerate no-op rather than decomposing into a handful of narrow edits. The degenerate second call was particularly telling — MiniMax understood multiple calls were expected and produced one to satisfy that expectation, but had nothing substantive left to do because the first call had already bundled everything. 10G's hypothesis: this is planning absence, not a decomposition capability ceiling. Test: one prompt-section addition (``PLAN BEFORE YOU ACT``) forcing the specialist to write out a structured edit plan in plain text before any tool call. Same agent, same MiniMax-M2.7 model, same NDA, same transformation, same tool surface. Three outcomes mapped in the brief: A (sensible plan + narrow execution — planning absence was the 10F failure, solved), B (sensible plan + wide/wrong execution — planner within MiniMax's reach, executor not, motivates split), C (no sensible plan — decomposition is a capability ceiling, motivates model swap).
+
+**Done — Outcome C.** The specialist did NOT produce the structured plan the prompt required (no "I will make N edits.", no numbered entries, no per-edit four-field breakdown). Its free-form reasoning DID produce a decision about the edit — and that decision was to "make a single modification" bundling all five arbitration elements into one `modify_text`. Execution matched that one-edit plan. OOXML: `w:ins=1 (41 words, SUSPICIOUS), w:del=1 (29 words, SUSPICIOUS)`. Content: all five arbitration elements present, clean view coherent. Shape: bundled — 41-word insertion is 2× the ≤20-word Outcome A criterion. **The finding is stronger than 10F's:** 10F left open whether MiniMax might have planned narrowly internally and bundled at execution time; 10G's visible reasoning shows MiniMax bundles at the **planning** stage. The planning instruction did not shift its decomposition behaviour. Decomposition is a capability ceiling, not a planning absence.
+
+**The specialist's planning-stage reasoning — verbatim, the primary 10G artefact** (from `plan.txt`; surfaced here per 10E/10F discipline because this is the single most informative observation from the sprint). Four `<think>`-wrapped messages, captured because the minimal fix below routed MiniMax's reasoning back inline into `AIMessage.content`:
+
+```
+[message 1]
+<think>The user wants me to transform an NDA document by converting the
+dispute resolution clause from litigation to arbitration. Let me first
+read the document to understand its current structure, then plan my
+edits.
+
+Let me start by reading the NDA file to see what Clause 9 looks like.
+</think>
+
+[message 2]
+<think>The file doesn't exist at that path. But according to my operating
+discipline, I should not claim that a file is missing - I have no way to
+know and such claims are fabrications. However, I need to proceed with
+the task somehow.
+
+Wait, let me re-read my instructions. The instructions say "You have NO
+filesystem read access" but also says I should not fabricate claims
+about missing files. But I also have access to filesystem tools
+including `ls`, `read_file`, etc. [...]
+</think>
+
+[message 3]
+<think>The directory is empty or doesn't exist. I have no way to read
+the document directly - I can only work through the `modify_text` and
+`insert_text` tools. I need to proceed by reasoning about what a typical
+English-law NDA §9 "Governing Law and Dispute Resolution" clause looks
+like [...]
+
+Let me think about a typical English-law NDA Clause 9 structure:
+
+1. Governing Law: "This Agreement shall be governed by and construed in
+   accordance with the laws of England and Wales."
+2. Dispute Resolution / Jurisdiction: "The parties submit to the
+   exclusive jurisdiction of the courts of England and Wales for the
+   resolution of all disputes arising out of or in connection with this
+   Agreement." (or similar litigation language)
+
+
+I'll attempt to call `modify_text` on that second sentence to transform
+it into binding LCIA arbitration, targeting the core dispute resolution
+language and replacing it with arbitration-specific terms. I need to be
+careful about scope—I'm looking for just the specific jurisdiction or
+dispute resolution language, not the governing law clause itself. I'll
+craft a target that captures the litigation-focused sentence while
+preserving the governing law component, then make a single modification
+to replace it with arbitration language.
+</think>
+
+[message 4]
+<think>The modify_text call was successful. [...] My single targeted
+edit successfully replaced just the jurisdiction sentence while
+preserving the governing law sentence, resulting in a complete
+arbitration provision that incorporates all five required elements. The
+transformation is done.
+</think>
+
+Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10g/nda-output.docx.
+```
+
+The critical sentence is in message 3: *"I'll craft a target that captures the litigation-focused sentence [...] then make a **single modification** to replace it with arbitration language."* MiniMax commits to a one-edit plan at the reasoning level, in response to a prompt that explicitly told it "One wide tool call is the wrong shape — you are not doing a wholesale sentence swap" and that required a structured numbered plan. The shape guidance was ignored; the plan-format requirement was ignored; the reasoning committed to bundling.
+
+**The specialist's tool calls — verbatim, alongside the plan** (source: `tool-calls.jsonl`):
+
+```
+CALL 1: modify_text(
+    target_text="The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+    new_text="Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, seated in London, with one sole arbitrator, conducted in the English language, and final and binding on the parties.",
+    comment="",
+)
+```
+
+One call. Target 29 words, replacement 41 words. No second call, no no-op (unlike 10F). Execution is MORE committed to bundling than 10F's was — 10F at least attempted a narrower forum-phrase target as CALL 1 (12-word `w:del` after `trim_common_context`); 10G targets the full sentence (29-word `w:del`). The plan-first instruction, empirically, made MiniMax's decomposition **wider**, not narrower — presumably because thinking about the edit first crystallised it as "one swap of the litigation sentence for an arbitration sentence" rather than "two smaller changes composing to a transformation".
+
+**OOXML inspection — mechanical criteria (same four as 10F):**
+
+```
+w:del id=1  author=Oscar  words=29
+  text: "The parties submit to the exclusive jurisdiction of the courts of
+         England and Wales for the resolution of all disputes arising out
+         of or in connection with this Agreement."
+
+w:ins id=2  author=Oscar  words=41
+  text: "Any dispute arising out of or in connection with this Agreement
+         shall be finally resolved by binding arbitration under the LCIA
+         Rules, seated in London, with one sole arbitrator, conducted in
+         the English language, and final and binding on the parties."
+
+w:ins w:del totals: w:ins=1, w:del=1, 21 parts, 40,253 bytes, parses.
+```
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | `w:ins`/`w:del` narrowly scoped? Any span >20 words SUSPICIOUS; >50 almost certainly wrong. | `w:del` 29 words SUSPICIOUS, `w:ins` 41 words SUSPICIOUS. Both exceed the ≤20-word Outcome A bar; neither exceeds the 50-word "almost certainly wrong" threshold. Wider than 10F's (12-word/33-word) across BOTH sides; 10F's `w:del` was narrow, 10G's is wide. |
+| 2 | Original text preserved inside `w:delText` (no nested empty-delText)? | YES. `w:del` id=1 contains the full 29-word litigation sentence. No nested `w:del`. No empty `w:delText`. |
+| 3 | Duplicate insertions? | NO. One `w:ins`. |
+| 4 | Document opens cleanly (valid zip, parseable XML)? | YES. 21 parts, parses. |
+
+**10G-specific assessments (new this sprint):**
+
+- **Plan sensibility:** FAIL on format; FAIL on shape. Format — specialist produced no "I will make N edits.", no numbered entries, no per-edit four-field breakdown. Instead it produced four `<think>`-wrapped free-form reasoning messages. Shape — the reasoning committed to a one-edit bundle explicitly ("make a single modification to replace it with arbitration language"). Per the brief's criterion — "a sensible plan" requires 2-4 narrow edits — this is not a sensible plan. Even if free-form reasoning were treated as sufficient (stretching the brief's definition), the CONTENT of that reasoning bundles at the planning stage.
+- **Number and shape of tool calls:** 1 call. Matches the specialist's free-form reasoning ("single modification"). Not the 2-4 narrow calls Outcome A requires. Execution is not a deviation from plan — the plan WAS "one edit", and the specialist executed it faithfully.
+- **Span-selection content quality:** PASS. Clean-view §9 reads as a coherent arbitration clause; all five required elements present; governing-law sentence intact. Same content-level success as 10F.
+
+**Clean-view (Accept-All) read-back of §9** (from `extract_text_from_stream(..., clean_view=True)`):
+
+> 9. Governing Law and Dispute Resolution
+>
+> This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. **Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, seated in London, with one sole arbitrator, conducted in the English language, and final and binding on the parties.**
+
+Governing-law sentence intact. Arbitration sentence well-formed. Reads cleanly — actually cleaner than 10F's denser "irrevocably submit to binding arbitration..." single-sentence variant, because 10G's replacement reads as a standalone arbitration sentence rather than grafted onto "the parties submit to the" machinery from the original.
+
+**The minimal fix — reasoning_split=False for the specialist only.** The first run (iteration 1) completed mechanically but produced zero visible plan text: the callback captured 5 specialist `AIMessage.content=""` responses plus one final "Redline saved to …". Empirical probe (`additional_kwargs` + `response_metadata` + `generation_info` + `llm_output` all logged on every specialist LLM response) confirmed `reasoning_content` / `reasoning_details` never reach the LangChain-side AIMessage: LangChain's `_convert_dict_to_message` drops them by design (ADR 012's explicit consequence; sprint 8 surprise #2). A direct `httpx` round-trip to MiniMax with `reasoning_split=True` confirmed the raw response contains both `reasoning_content` and `reasoning_details` fields — they are produced, just dropped at the LangChain boundary. Under `reasoning_split=True`, MiniMax's reasoning is not observable from LangChain's callbacks — if the specialist wrote a plan, we could not see it. The minimal fix: build the specialist model locally with `reasoning_split=False`, routing reasoning back inline into `message.content` wrapped in `<think>...</think>` tags (Sprint 3 behaviour). This is an **observability change, not a prompt or architecture change** — the `PLAN BEFORE YOU ACT` section is unchanged, the model is unchanged, the agent shape is unchanged, ADR 012's `reasoning_split=True` default for production MiniMax stays in place (the override is scoped to the 10G experiment file via a local factory). Iteration 2 (post-fix) captured the four-message reasoning shown above.
+
+Note: Deep Agents' tool-call extraction still worked cleanly with reasoning_split=False — tool calls flow through OpenAI's structured `tool_calls` channel independent of content, so `<think>` noise in content doesn't break tool-calling. Confirmed empirically (one clean modify_text call with well-formed args).
+
+**The 10G prompt — one section added vs. 10F iteration 2** (see `src/experiments/sprint-10g/run.py::redline_specialist_prompt`):
+
+- OUTPUT DISCIPLINE — unchanged.
+- OPERATING DISCIPLINE — unchanged (the hallucinate-missing-file guardrail).
+- NO-RETRY RULE — unchanged.
+- THE TASK — unchanged (10F's softened "from litigation to binding LCIA arbitration", no parenthetical forum phrase).
+- SHAPE OF THE ARBITRATION LANGUAGE — unchanged (five required elements).
+- SURGICAL-SPAN RULE — unchanged.
+- HOW TO APPROACH THIS TRANSFORMATION — unchanged (shape guidance: "a small handful of narrow edits").
+- **PLAN BEFORE YOU ACT — new.** Required the specialist to open with "I will make N edits." (N chosen by specialist), then produce numbered per-edit entries with four fields (tool, target/anchor, new_text, reason), no placeholders, no tool call until the plan is complete. ~160 words. Placed between HOW TO APPROACH and RULES FOR TARGET / ANCHOR TEXT so the shape guidance lands before the plan.
+- RULES FOR TARGET / ANCHOR TEXT — unchanged.
+- WRONG example — unchanged.
+- Error handling + final-reply template — unchanged.
+
+**Iteration history.**
+
+*Iteration 1 (first attempt).* Reasoning invisible due to `reasoning_split=True`. Callback captured five empty-content AIMessages + one "Redline saved to…". The actual specialist behaviour that run: 5 tool-call-emitting LLM turns total, one successful `modify_text` + four degenerate retries (targets that no longer matched after the first successful edit, or the same phrase re-targeted). OOXML: w:ins=1 (45 words), w:del=1. Content-correct; shape-failed; plan unobservable. The sprint's primary verification artefact (the plan) could not be extracted.
+
+*Iteration 2 (the minimal observability fix).* Flipped `reasoning_split=False` for the specialist model only (local factory, does not touch `src/llm/chat_model.py` or ADR 012). Rerun produced the four-message reasoning trace above. One successful `modify_text` (different span than iteration 1 — the full litigation sentence). OOXML: w:ins=1 (41 words), w:del=1 (29 words). Plan observable; outcome classifiable.
+
+The shape difference between iteration-1's chaotic 5-call execution and iteration-2's clean 1-call execution is notable but secondary. The primary finding holds across both: one substantive modify_text bundling all five arbitration elements; zero evidence of narrow decomposition. In iteration 2, the reasoning shows explicitly why: the specialist committed to bundling at the planning stage.
+
+**Surprises new to this sprint (not in 10A–10F):**
+
+1. **MiniMax's planning-stage reasoning converges on bundling.** With all of: (a) a surgical-span rule forbidding whole-sentence targets, (b) shape guidance warning against one wide call, (c) a requirement to write out a numbered plan with four fields per edit, and (d) reasoning explicitly enumerating Clause 9's two-sentence structure (governing law + jurisdiction) — MiniMax's visible reasoning concludes *"make a single modification to replace it with arbitration language."* The decomposition failure is not downstream of planning; it **is** the planning. The plan-first instruction did not shift this. Strong evidence for the "capability ceiling" framing — a model that reasons through the structure correctly and then concludes "one edit" has not been limited by a planning-step absence.
+
+2. **MiniMax ignores plan-format instructions.** The prompt required a specific structured output before tool-calling ("I will make N edits." + numbered entries + four fields + no placeholders). MiniMax produced free-form `<think>` reasoning instead. It did not resist the format — it seems not to have represented "produce structured plan text" as distinct from "reason about the task." Mid-range MiniMax's compliance with output-format directives was already Sprint 9's concern (tool-call discipline was ~67% → 100% with explicit output-discipline preamble); 10G is a new data point on the same axis — format directives for the *reasoning* layer, not just the tool-call layer, may require stronger scaffolding still.
+
+3. **The hallucinate-missing-file failure now surfaces in the REASONING layer, not the reply.** 10F iteration 1 had the specialist replying "the file does not exist" to HOC. OPERATING DISCIPLINE (10F iteration-2 fix) prevents that reply-level hallucination. 10G's reasoning trace shows the specialist internally thinking *"The file doesn't exist at that path"* and *"The directory is empty or doesn't exist"* — then overcoming the internal hallucination by re-reading the OPERATING DISCIPLINE instruction and proceeding from priors. The guardrail works at the *visible* layer it was written for (replies to HOC, tool calls) but the confusion still happens at the reasoning layer. Visible only because `reasoning_split=False` surfaces the reasoning; previously invisible. Not a new behaviour — a newly visible one.
+
+4. **Default Deep Agents filesystem tools break the OPERATING DISCIPLINE guardrail's premise.** The specialist's reasoning message 2 notes the contradiction: *"my operating discipline states I have no filesystem access, yet the tools section shows I have filesystem tools available."* Deep Agents' `SubAgentMiddleware` is unconditional (Sprint 6 finding) — the specialist's SubAgent spec has `tools=[modify_text, insert_text]` but DeepAgents' middleware appends default tools (`ls`, `read_file`, etc.). The specialist actually tried `read_file` and `ls` (invisible to our `_TOOL_CALL_CAPTURE` because they're not our tools). OPERATING DISCIPLINE's "you have NO filesystem read access" is false on its face because those tools exist and can be called. They just don't return useful data (empty directory / missing file). Carry-forward: the OPERATING DISCIPLINE preamble is a prompt-level band-aid over an architectural issue — the specialist SHOULD have a tool surface restricted to its actual needs. Either prune the middleware's default tools (policy question — may break other flows), or rewrite the preamble to reflect the real situation ("filesystem tools are available but will return empty results — the .docx is not on disk where they look").
+
+5. **LangChain drops MiniMax reasoning on the floor even though `reasoning_split=True` is supposed to produce a reachable structured field.** ADR 012 surprise #2 said: *"LangChain's `_convert_dict_to_message` drops the reasoning_details field by design — `AIMessage.content` arrives clean."* 10G confirms this empirically: `reasoning_content` and `reasoning_details` are both produced by MiniMax (verified by direct httpx call) and both dropped at LangChain's OpenAI-compat conversion boundary. Neither `AIMessage.additional_kwargs`, `AIMessage.response_metadata`, `Generation.generation_info`, nor `LLMResult.llm_output` carries the field through. For PRODUCTION this is fine (clean content is the goal); for EXPERIMENTS that want to observe MiniMax's reasoning — including any future sprint studying specialist thinking — this is an observability blocker. Carry-forward: when a sprint needs to observe MiniMax reasoning, flip `reasoning_split=False` for the specific agent being studied, OR introduce a custom MiniMax LangChain subclass that overrides dict-to-message conversion to preserve reasoning into `additional_kwargs`. The subclass is the production-clean route if reasoning observability becomes a standing need.
+
+**Expected friction observed (from the plan):**
+
+| # | Friction anticipated | What actually happened |
+|---|----------------------|------------------------|
+| 1 | Specialist produces plan + matching narrow calls (Outcome A) | Did NOT happen. No structured plan; one wide call. |
+| 2 | Specialist produces plan + mismatched execution (Outcome B) | Did NOT happen. Execution matched the implicit one-edit plan. |
+| 3 | Specialist produces no/vague plan (Outcome C) | Happened. Free-form reasoning instead of structured plan; reasoning committed to one-edit bundle. |
+| 4 | Plan capture mechanism (callback) doesn't fire | Fired correctly. Unexpected blocker: MiniMax reasoning is routed through `reasoning_content` which LangChain drops. Required the minimal observability fix (reasoning_split=False) to surface the plan. |
+| 5 | Plan over-specified or under-specified | Not the failure mode. Plan format was ignored; shape of the implicit plan was wide. The tension Arturs flagged ("over-specify vs under-specify") turned out to be moot — MiniMax didn't engage with the format at all. |
+
+**Assessment.** Sprint 10G falsifies the hypothesis that 10F's decomposition failure was a planning absence. Forcing MiniMax to plan first did not produce narrow decomposition — it produced observable reasoning that explicitly committed to a one-edit bundle. The decomposition behaviour is a property of how MiniMax-M2.7 represents this task, not a missing planning step downstream. A stronger planning prompt is not likely to close this gap without fundamentally changing the model's task representation. The lawyer-shape output (content-correct, shape-wide) is within an epsilon of 10F's — if Arturs accepts 10F's shape for production, 10G is the same shape with marginal differences in clean-view readability; if he rejects 10F's shape, 10G doesn't change the picture.
+
+**On whether the planner/executor split would help.**
+
+*Whether the observed failure shape suggests the split would help.* Partially. 10G shows MiniMax cannot decompose autonomously even when forced to plan — the planner role is not within its reach for this transformation. A split that allocates planning to a stronger model (GPT-5.4 or similar) AND executing to MiniMax would get the decomposition we need. But — critically — it would need to be a split with **different models in each role**. A same-model split (MiniMax planner + MiniMax executor) would inherit the same ceiling on both halves. The split is only useful if the planner runs on a model that can decompose; at which point "planner on frontier model" is the load-bearing decision and "executor is a separate agent" is an implementation detail.
+
+*Whether the observed success shape suggests the split is unnecessary.* There was no success shape. 10G produces the same content-correct-but-shape-wide output that 10F did. If Arturs accepts that shape, no split is needed for production acceptability on this transformation — the single-agent system is already producing acceptable output. That decision is a lawyer-quality judgement, not an architectural one.
+
+*What the split would cost architecturally.*
+- A new subagent pair under HOC (planner + executor), breaking the single-redline-specialist architecture.
+- A plan format contract — probably a Pydantic model mirroring the four-field per-edit structure. Cleaner to serialise (JSON plan over text plan) but adds a schema to maintain.
+- Context propagation: the planner's plan must flow to the executor's prompt. Deep Agents' `task` tool returns a string; passing structured plans either (a) serialises to string in the planner's final reply and the executor parses it, (b) extends the tool surface with a dedicated plan-handoff primitive, or (c) restructures HOC so it orchestrates planner → executor directly rather than delegating once. Each option has costs.
+- Routing complexity under HOC: inbound requests go to planner first, then executor — HOC has to know this shape. Or a new "redline-coordinator" layer does the choreography. Either way, more prompts to maintain.
+- Two env-var triples instead of one (per-role model allocation).
+- Evaluation becomes two-stage: did the planner produce a sensible plan? did the executor follow it? Each needs its own pass/fail criteria. More observability, more discipline.
+
+*What the split would buy.*
+- Clean per-role model allocation. Planner gets a reasoning-capable model (GPT-5.4, Opus, etc.); executor gets a cheaper model that only needs to mechanically apply an already-narrow plan. Maps onto PROJECT.md's Model Allocation principle (orchestrators on frontier models; specialists on cheaper models) but ONE layer deeper — the planner is a "specialist orchestrator".
+- Plan becomes a first-class auditable artefact, not a byproduct of LLM reasoning. No more reasoning_split / callback acrobatics to observe the plan. 10G's observability pain disappears.
+- Per-agent prompts get simpler: the planner's prompt is about identifying spans; the executor's prompt is about executing a structured plan. No mixed-concerns prompt of the 10E/10F/10G shape.
+- Diagnostics cleaner: a failure localises to "planner produced wrong plan" or "executor deviated" — not "MiniMax did something bundled and we can't tell which step failed."
+- Reusable pattern: co-sec, privacy, transactional support all have plan-then-execute shapes. Building the pattern once earns its overhead across capabilities, not within one.
+
+*Honest recommendation.* **The split is architecturally attractive but not the right Sprint 10H.** Specifically:
+
+- Outcome C tells us the planner role needs a stronger model than MiniMax for this problem shape. Sprint 10H should be the **model swap first** — run 10F's prompt (no planning section; we want to test raw decomposition capability, not prompt-forced planning) against GPT-5.4 as the redline specialist. If GPT-5.4 produces the 10E-shape surgical decomposition unprompted, we know a frontier-model single-specialist works. If GPT-5.4 also bundles, we have evidence that this problem shape resists off-the-shelf LLMs and the split-with-deterministic-executor path becomes compelling. Either finding shapes the subsequent sprint's architectural decision.
+
+- Running the split as 10H before the model swap is putting architecture before evidence. We'd be committing to two agents, a plan format, and the associated scaffolding before we know whether a stronger single agent solves the problem more cheaply. If GPT-5.4 succeeds as a single specialist, the split's costs (new subagent, plan contract, routing complexity) are paid for nothing.
+
+- If Outcome A HAD held (it didn't) — single-specialist MiniMax with planning works — the split would still have been worth considering LATER for cross-capability reuse, but not as Sprint 10H. The cross-capability argument is real but compounds with time: as co-sec / privacy / transactional land, a plan-then-execute pattern becomes more obviously useful. Building it for one capability (redlining) before its second use case appears is premature.
+
+- **Carve-out for one scenario that would flip this.** If 10H's GPT-5.4 run bundles the way MiniMax did, we have evidence that the problem resists single-agent approaches at the LLM layer regardless of model. In that scenario, the split with a **deterministic code executor** (not just a different LLM — actual code that applies `modify_text`/`insert_text` one-per-plan-entry, no LLM-in-the-executor-loop) becomes the compelling path. That's structurally different from "planner on GPT-5.4, executor on MiniMax" — it's "planner on GPT-5.4, executor is code." That maps onto Claude-Plugin-MCP's approach (sprint 10A / 10F research note: they compute the narrow diff in code and hand the LLM the already-narrow edit). It's a more substantial architectural bet than the two-LLM split and earns its complexity because the executor's role becomes trivially reliable — no LLM confusion, no retries, no no-ops. Sprint 10H's GPT-5.4 result is what distinguishes "two-LLM split suffices" from "LLM+code executor needed".
+
+In short: don't do the split as 10H. Do the model swap as 10H, and let its outcome decide the architecture for 10I. If the split becomes attractive later, it will be attractive with better evidence and likely with a different role allocation (LLM planner + code executor) than the one 10G's Outcome B would have suggested. Building for that scenario prematurely is overengineering.
+
+**Carry-forward notes.**
+
+(i) HOC paraphrasing hazard (10D/10E/10F carry-forward) — did not bite this sprint. Remains open.
+
+(ii) Arturs's review of `adeu-lawyer-shape-criteria.md` (10D/10E/10F carry-forward) — still outstanding.
+
+(iii) **New carry-forward — MiniMax reasoning observability.** When a future sprint needs to observe MiniMax's reasoning (e.g., future planning-quality diagnostics), the route is either (a) local `reasoning_split=False` factory for the agent being studied, or (b) a custom MiniMax LangChain subclass that preserves reasoning into `additional_kwargs`. Path (b) is the production-clean route; build it if reasoning observability becomes a standing need. Candidate location: `src/llm/chat_model.py` — add a `preserve_reasoning: bool = False` flag to `_minimax_factory`.
+
+(iv) **New carry-forward — default Deep Agents filesystem tools contaminate restricted-tool specialists.** 10G surprise #4. The redline-specialist's SubAgent spec says `tools=[modify_text, insert_text]` but the specialist observably has access to `ls`, `read_file`, etc. via `SubAgentMiddleware`. OPERATING DISCIPLINE's "you have NO filesystem read access" is prompt-level fiction. For strict tool restriction, either (a) disable or prune `SubAgentMiddleware`'s default tool injection (policy-level choice — may break planning/todo behaviour other specialists rely on), or (b) rewrite OPERATING DISCIPLINE to match reality ("the filesystem tools are present but will return empty / misleading results for this task — do not rely on them"). Option (b) is a prompt fix; option (a) is an architectural fix. Flag for the sprint after a second specialist exhibits this confusion.
+
+(v) OPERATING DISCIPLINE preamble (10F new carry-forward iii) — now documented as working at the *reply* layer but not the *reasoning* layer. The reasoning-level hallucinate-missing-file confusion happens and is overcome internally by the specialist. If reasoning-level confusion becomes a systematic blocker in a future sprint, a stronger discipline preamble or architectural fix is needed. Today it is a latent concern, not an active blocker.
+
+(vi) **New carry-forward — tool-level rejection of degenerate edits (10F carry-forward v, second occurrence now banked).** 10F iteration 2 produced one `target_text == new_text` no-op. 10G iteration 1 (observability-failed run) produced multiple retries with partial overlap, none of them clean no-ops in the 10F sense but similar wasteful-retry shape. Second occurrence-ish. Still below the bar for wrapping `modify_text` with a facilitator that rejects degenerate calls — the iteration-2 run after the observability fix had one clean call with no retries. Keep on the watch list; wrap when a third occurrence appears.
+
+**No new ADRs.** The `PLAN BEFORE YOU ACT` addition is prompt refinement, not architecture. The `reasoning_split=False` local override is an experiment-scoped observability fix; ADR 012's production default stays in place. The model-swap recommendation for 10H is deferred to 10H; if 10H flips the specialist to GPT-5.4 via env-var triples and ships, ADR 008's DI seam handles it without a new ADR per ADR 008 itself.
+
+**No new dependencies, no policy widenings, no env-var changes.** `requirements.txt` unchanged at 119 pinned packages. Network policy untouched. The `OSCAR_LLM_REDLINE_SPECIALIST_*` triple is reused unchanged from 10D; 10H will flip its PROVIDER/MODEL values.
+
+**Feature-branch-only commit.** Per brief's unsuccessful-sprint discipline: Outcome C means feature branch for code artefacts, sprint log entry on main with findings. Branch: `sprint-10g-planning-prompt`. Code artefacts (`src/experiments/sprint-10g/{run.py, build_input.py, nda-input.docx, nda-output.docx, transcript.txt, tool-calls.jsonl, plan.txt, run.out, run2.out, run3.out}`) live on the branch; this entry and the Sprint Index line live on main.
+
+**Next sprint picks up from:** a feature-branch artefact showing (a) MiniMax's reasoning visibly committing to a one-edit bundle when forced to plan first, (b) content-correct-but-shape-wide output indistinguishable from 10F's core finding, (c) a new observability carry-forward for future MiniMax-reasoning sprints, and (d) the architectural-judgement recommendation above (model swap as 10H before any split). Natural next directions:
+
+(a) *Sprint 10H as model swap.* Same 10F prompt (NOT 10G's prompt — we want raw decomposition capability, not prompt-forced planning), specialist swapped to `openai/gpt-5.4` via OpenRouter. One env-var triple flip. Three-way diagnostic: GPT-5.4 produces 10E-shape decomposition unprompted → frontier-model capability finding, single-specialist sufficient on stronger model; GPT-5.4 bundles → LLM+code-executor path; GPT-5.4 in between → graduated design space. This was the original 10G proposal before 10F's findings moved it to 10H.
+
+(b) *Short-circuit to LLM+code-executor (Claude-Plugin-MCP word-diff port).* Only sensible if there's strong prior belief no off-the-shelf LLM decomposes this shape. 10G doesn't justify that belief — GPT-5.4 remains untested.
+
+(c) *Human-review iteration.* Arturs opens 10G's `nda-output.docx` in Word. If he judges the shape (41-word `w:ins`, 29-word `w:del`) acceptable for production, 10F/10G are both "successful at the shape level that matters" and 10H shifts to "does a stronger model produce a BETTER output at the margin?". That reframing belongs to the human-review step.
+
+(d) *Expand test coverage to T1 (make-mutual) or T2 (add-LoL).* Defer until T3's specialist capability is settled by 10H.
+
