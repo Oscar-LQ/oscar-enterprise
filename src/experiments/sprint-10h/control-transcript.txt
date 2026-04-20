@@ -1,0 +1,63 @@
+========================================================================
+Sprint 10H CONTROL — transcript
+========================================================================
+
+INVOCATION:
+Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+I will make 2 edits.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "the exclusive jurisdiction of the courts of England and Wales",
+    "new_text": "binding arbitration under the LCIA Rules",
+    "reason": "Replace the forum-submission phrase with LCIA arbitration."
+  },
+  {
+    "tool": "insert_text",
+    "anchor_text": "arising out of or in connection with this Agreement.",
+    "new_text": " The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.",
+    "reason": "Append the seat/language/arbitrator/finality sentence after the closing full stop."
+  }
+]
+```
+
+--- EXECUTOR MESSAGE TRACE ---
+   1. [HumanMessage] Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.  I will make 2 edits.  ```json [   {     "tool": "modify_text",     "target_text": "the exclusive jurisdiction of the courts of England and Wales",     "new_text": "binding arbitration
+   2. [AIMessage tool_calls=modify_text(['target_text', 'new_text'])] 
+   3. [ToolMessage name='modify_text'] applied: edits_applied=1 edits_skipped=0 — this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop.
+   4. [AIMessage tool_calls=insert_text(['anchor_text', 'new_text'])] 
+   5. [ToolMessage name='insert_text'] applied: edits_applied=1 edits_skipped=0 — this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop.
+   6. [AIMessage] Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+--- FINAL RESPONSE (executor → user) ---
+Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+--- EXECUTOR TOOL CALLS (verbatim) ---
+  CALL 1: modify_text(
+    target_text='the exclusive jurisdiction of the courts of England and Wales',
+    new_text='binding arbitration under the LCIA Rules',
+    comment='',
+  )
+  CALL 2: insert_text(
+    anchor_text='arising out of or in connection with this Agreement.',
+    new_text=' The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.',
+    comment='',
+  )
+
+--- MECHANICAL VERIFICATION ---
+  exists: /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx (40283 bytes)
+  valid zip with 21 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=2, w:del=1
+  OK: w:ins[id=2] span=6 words
+  WARN: w:ins[id=3] span=30 words — >20, suspicious (review against criteria)
+  OK: w:del[id=1] span=10 words
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText.
+  FOUND: seat London
+  FOUND: rules LCIA
+  FOUND: sole arbitrator (one)
+  MISSING: language English
+  FOUND: final and binding

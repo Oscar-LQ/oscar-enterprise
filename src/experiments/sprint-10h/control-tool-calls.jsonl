@@ -1,0 +1,2 @@
+{"name": "modify_text", "args": {"target_text": "the exclusive jurisdiction of the courts of England and Wales", "new_text": "binding arbitration under the LCIA Rules", "comment": ""}}
+{"name": "insert_text", "args": {"anchor_text": "arising out of or in connection with this Agreement.", "new_text": " The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.", "comment": ""}}

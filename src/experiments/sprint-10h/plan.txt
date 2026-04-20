@@ -1,0 +1,28 @@
+--- planner AIMessage ---
+I will make 1 edit.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "[existing litigation/jurisdiction sentence - replace entirely]",
+    "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+    "reason": "Replace only the jurisdiction/dispute-resolution sentence with the required LCIA arbitration wording while leaving the governing-law sentence ending 'England and Wales.' unchanged."
+  }
+]
+```
+
+--- planner AIMessage ---
+I will make 1 edits.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.",
+    "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+    "reason": "Replace the jurisdiction/litigation sentence with binding LCIA arbitration language while leaving the governing-law sentence unchanged."
+  }
+]
+```
+

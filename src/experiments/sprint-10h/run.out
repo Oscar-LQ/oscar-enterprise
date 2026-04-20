@@ -1,0 +1,216 @@
+OSCAR_LLM_GENERAL_COUNSEL_PROVIDER                 = 'openrouter'
+OSCAR_LLM_GENERAL_COUNSEL_MODEL                    = 'openai/gpt-5.4'
+OSCAR_LLM_HEAD_OF_COMMERCIAL_PROVIDER              = 'minimax'
+OSCAR_LLM_HEAD_OF_COMMERCIAL_MODEL                 = 'MiniMax-M2.7'
+OSCAR_LLM_REDLINE_PLANNER_PROVIDER                 = 'openrouter'
+OSCAR_LLM_REDLINE_PLANNER_MODEL                    = 'openai/gpt-5.4'
+OSCAR_LLM_REDLINE_EXECUTOR_PROVIDER                = 'minimax'
+OSCAR_LLM_REDLINE_EXECUTOR_MODEL                   = 'MiniMax-M2.7'
+OSCAR_LLM_ACCEPT_REJECT_REASONER_PROVIDER          = 'minimax'
+OSCAR_LLM_ACCEPT_REJECT_REASONER_MODEL             = 'MiniMax-M2.7'
+
+========================================================================
+PRIMARY INVOCATION
+========================================================================
+PROMPT:
+Please convert the dispute resolution clause in the attached NDA from litigation to binding LCIA arbitration. Keep the governing-law sentence (England and Wales) intact; change only the jurisdiction/dispute-resolution sentence. The arbitration provision must name all five of: (1) seat London, (2) LCIA Rules, (3) one sole arbitrator, (4) English language, (5) final and binding on the parties.
+
+The NDA is at /sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx.
+
+Clause 9 ("Governing Law and Dispute Resolution") reads verbatim:
+
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.
+========================================================================
+
+--- GC MESSAGE TRACE ---
+   1. [HumanMessage] Please convert the dispute resolution clause in the attached NDA from litigation to binding LCIA arbitration. Keep the governing-law sentence (England and Wales) intact; change only the jurisdiction/dispute-resolution sentence. The arbitration provision must name all five of: (1) seat London, (2) LC
+   2. [AIMessage tool_calls=task(['description', 'subagent_type'])] 
+   3. [ToolMessage name='task'] The `redline-executor` returned an explicit error: the target text was not found in the document, and a subsequent filesystem search confirmed the file `/sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx` does not exist — only `plan-error.json
+   4. [AIMessage] I can’t complete the redline because the source file isn’t present at the path you gave.  Missing file: - `/sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx`  The directory appears to contain only: - `plan-error.json`  Please upload the NDA or confirm the correct `.docx` path, and 
+
+--- GC task() subagent_types ---
+  head-of-commercial
+
+--- FINAL RESPONSE (GC → user) ---
+I can’t complete the redline because the source file isn’t present at the path you gave.
+
+Missing file:
+- `/sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx`
+
+The directory appears to contain only:
+- `plan-error.json`
+
+Please upload the NDA or confirm the correct `.docx` path, and I’ll redo the amendment so that only the dispute-resolution sentence is changed and the governing-law sentence remains intact.
+
+--- PLANNER'S PLAN (verbatim, all non-empty AIMessage.content) ---
+  [planner message 1]
+    I will make 1 edit.
+    
+    ```json
+    [
+      {
+        "tool": "modify_text",
+        "target_text": "[existing litigation/jurisdiction sentence - replace entirely]",
+        "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+        "reason": "Replace only the jurisdiction/dispute-resolution sentence with the required LCIA arbitration wording while leaving the governing-law sentence ending 'England and Wales.' unchanged."
+      }
+    ]
+    ```
+  [planner message 2]
+    I will make 1 edits.
+    
+    ```json
+    [
+      {
+        "tool": "modify_text",
+        "target_text": "The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.",
+        "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+        "reason": "Replace the jurisdiction/litigation sentence with binding LCIA arbitration language while leaving the governing-law sentence unchanged."
+      }
+    ]
+    ```
+
+--- HOC INVOCATIONS OF redline-executor (verbatim descriptions) ---
+  [invocation 1] subagent_type='redline-executor'
+    Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx.
+    
+    I will make 1 edit.
+    
+    ```json
+    [
+      {
+        "tool": "modify_text",
+        "target_text": "[existing litigation/jurisdiction sentence - replace entirely]",
+        "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+        "reason": "Replace only the jurisdiction/dispute-resolution sentence with the required LCIA arbitration wording while leaving the governing-law sentence ending 'England and Wales.' unchanged."
+      }
+    ]
+    ```
+  [invocation 2] subagent_type='redline-executor'
+    Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-input.docx.
+    
+    I will make 1 edits.
+    
+    ```json
+    [
+      {
+        "tool": "modify_text",
+        "target_text": "The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.",
+        "new_text": "Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.",
+        "reason": "Replace the jurisdiction/litigation sentence with binding LCIA arbitration language while leaving the governing-law sentence unchanged."
+      }
+    ]
+    ```
+
+--- EXECUTOR TOOL CALLS (verbatim) ---
+  CALL 1: modify_text(
+    target_text='The Parties irrevocably submit to the exclusive jurisdiction of the courts of England and Wales.',
+    new_text='Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration under the LCIA Rules, by one sole arbitrator appointed in accordance with those Rules, seated in London, conducted in the English language, with the award/final decision being final and binding on the parties.',
+    comment='',
+  )
+
+--- MECHANICAL VERIFICATION ---
+  exists: /sandbox/oscar-enterprise/src/experiments/sprint-10h/nda-output.docx (38795 bytes)
+  valid zip with 17 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=0, w:del=0
+  WARN: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' NOT found in any w:delText.
+  FOUND: seat London
+  MISSING: rules LCIA
+  MISSING: sole arbitrator (one)
+  MISSING: language English
+  MISSING: final and binding
+
+--- CLEAN-VIEW READ-BACK (simulated Accept-All), §9 excerpt ---
+  9. Governing Law and Dispute Resolution
+  
+  This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.
+  
+  ## 10. General
+  
+  This Agreement constitutes the entire agreement between the Parties in relation to its subject matter and supersedes all prior communications, understandings, and agreements. No amendment of this Agreement shall be effective unless in writing and signed by authorised representatives of both Parties. This Agreement may be executed in counterparts, each of which shall be deemed an original, and all of which together shall constitute one and the same instrument.
+  
+  SIGNED for and on behalf of Acme Holdings Limited by an authorised representative.
+  
+  SIGNED for and on behalf of Zenith Partners Limited by an authorised representative.
+
+transcript written to /sandbox/oscar-enterprise/src/experiments/sprint-10h/transcript.txt
+
+########################################################################
+# CONTROL RUN — executor alone, handed 10E's spans in 10H plan format
+########################################################################
+
+========================================================================
+CONTROL INVOCATION
+========================================================================
+PROMPT (plan handed to executor, HumanMessage):
+Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+I will make 2 edits.
+
+```json
+[
+  {
+    "tool": "modify_text",
+    "target_text": "the exclusive jurisdiction of the courts of England and Wales",
+    "new_text": "binding arbitration under the LCIA Rules",
+    "reason": "Replace the forum-submission phrase with LCIA arbitration."
+  },
+  {
+    "tool": "insert_text",
+    "anchor_text": "arising out of or in connection with this Agreement.",
+    "new_text": " The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.",
+    "reason": "Append the seat/language/arbitrator/finality sentence after the closing full stop."
+  }
+]
+```
+========================================================================
+
+--- EXECUTOR MESSAGE TRACE ---
+   1. [HumanMessage] Execute the following redline plan on /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.  I will make 2 edits.  ```json [   {     "tool": "modify_text",     "target_text": "the exclusive jurisdiction of the courts of England and Wales",     "new_text": "binding arbitration
+   2. [AIMessage tool_calls=modify_text(['target_text', 'new_text'])] 
+   3. [ToolMessage name='modify_text'] applied: edits_applied=1 edits_skipped=0 — this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop.
+   4. [AIMessage tool_calls=insert_text(['anchor_text', 'new_text'])] 
+   5. [ToolMessage name='insert_text'] applied: edits_applied=1 edits_skipped=0 — this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop.
+   6. [AIMessage] Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+--- FINAL RESPONSE (executor → user) ---
+Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx.
+
+--- CONTROL EXECUTOR TOOL CALLS (verbatim) ---
+  CALL 1: modify_text(
+    target_text='the exclusive jurisdiction of the courts of England and Wales',
+    new_text='binding arbitration under the LCIA Rules',
+    comment='',
+  )
+  CALL 2: insert_text(
+    anchor_text='arising out of or in connection with this Agreement.',
+    new_text=' The seat of arbitration shall be London, England; the language English; the tribunal shall consist of a sole arbitrator; and the award shall be final and binding on the parties.',
+    comment='',
+  )
+
+--- MECHANICAL VERIFICATION (control) ---
+  exists: /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-nda-output.docx (40283 bytes)
+  valid zip with 21 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=2, w:del=1
+  OK: w:ins[id=2] span=6 words
+  WARN: w:ins[id=3] span=30 words — >20, suspicious (review against criteria)
+  OK: w:del[id=1] span=10 words
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText.
+  FOUND: seat London
+  FOUND: rules LCIA
+  FOUND: sole arbitrator (one)
+  MISSING: language English
+  FOUND: final and binding
+
+transcript written to /sandbox/oscar-enterprise/src/experiments/sprint-10h/control-transcript.txt
+
+========================================================================
+SUMMARY
+========================================================================
+primary mechanical-gates ok: True
+control mechanical-gates ok: True
+
+sprint-10h: primary + control runs completed (hard gates).
+Lawyer-shape judgement from WARN/OK lines feeds the sprint-log entry; outcome classification (A / B / C) is separate.
