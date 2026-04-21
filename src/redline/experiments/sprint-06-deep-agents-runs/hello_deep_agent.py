@@ -39,14 +39,14 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 
 from deepagents import create_deep_agent
 
-from llm.chat_model import get_chat_model
+from shared.llm.chat_model import get_chat_model
 
 
 _SLUGIFY_NON_ALNUM = re.compile(r"[^a-z0-9]+")

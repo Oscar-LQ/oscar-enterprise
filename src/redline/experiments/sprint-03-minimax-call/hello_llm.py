@@ -34,12 +34,12 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from llm import LLMClient, get_llm_client
+from shared.llm import LLMClient, get_llm_client
 
 
 class State(TypedDict):

@@ -7,7 +7,7 @@ edited, update both files together — they must stay in sync.
 
 Run directly to (re)generate the document::
 
-    python -m src.experiments.sprint-10d.build_input
+    python src/redline/experiments/sprint-10e/build_input.py
 """
 from __future__ import annotations
 

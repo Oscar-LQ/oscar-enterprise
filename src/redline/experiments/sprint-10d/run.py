@@ -71,7 +71,7 @@ structlog.configure(
     logger_factory=structlog.stdlib.LoggerFactory(),
 )
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool, tool
@@ -83,7 +83,7 @@ from deepagents import create_deep_agent
 from adeu import ModifyText, RedlineEngine
 from adeu.redline.engine import BatchValidationError
 
-from llm.chat_model import get_chat_model
+from shared.llm.chat_model import get_chat_model
 
 
 # ---------------------------------------------------------------------------
