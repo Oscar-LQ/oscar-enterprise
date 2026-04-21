@@ -1,0 +1,52 @@
+========================================================================
+Sprint 10K — transcript — 2026-04-21T10:30:53.712068+00:00
+========================================================================
+
+ENV:
+  OSCAR_LLM_REDLINE_EXECUTOR_PROVIDER = 'minimax'
+  OSCAR_LLM_REDLINE_EXECUTOR_MODEL = 'MiniMax-M2.7'
+
+ARTEFACTS:
+  llm-input.txt      (20235 bytes)
+  llm-output.txt     (629 bytes)
+  parsed-edits.json  (591 bytes)
+  adeu-calls.jsonl   (569 bytes)
+  nda-output.docx    (40252 bytes)
+
+PARSED EDITS: 1
+  EDIT 1:
+    target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.'
+    new_text='Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.'
+    comment=None
+
+--- ADEU CALLS (VERBATIM) ---
+  CALL 1: ModifyText(
+    target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.',
+    new_text='Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.',
+  )
+
+--- APPLY RESULT ---
+  edits_applied: 1
+  edits_skipped: 0
+
+--- MECHANICAL VERIFICATION ---
+  exists: /sandbox/oscar-enterprise/src/redline/experiments/sprint-10k/nda-output.docx (40252 bytes)
+  valid zip with 21 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=1, w:del=1
+  WARN: w:ins[id=2] span=56 words — >50, almost certainly over-broad (lawyer-shape fail)
+  WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText (original text is in the audit trail).
+
+--- CLEAN-VIEW §9 READ-BACK (simulated Accept-All) ---
+  9. Governing Law and Dispute Resolution
+  
+  This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.
+  
+  ## 10. General
+  
+  This Agreement constitutes the entire agreement between the Parties in relation to its subject matter and supersedes all prior communications, understandings, and agreements. No amendment of this Agreement shall be effective unless in writing and signed by authorised representatives of both Parties. This Agreement may be executed in counterparts, each of which shall be deemed an original, and all of which together shall constitute one and the same instrument.
+  
+  SIGNED for and on behalf of Acme Holdings Limited by an authorised representative.
+  
+
