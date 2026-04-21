@@ -10,7 +10,7 @@
 > lives in `PROJECT.md` under "Sprint Index." Read the index to identify
 > which full entries here are worth reading for your current task.
 
-### Sprint 0 — 2026-04-18 — Establish workflow
+### Sprint 0 — [Redline] — 2026-04-18 — Establish workflow
 
 **Goal:** Establish the sprint discipline. Get sandbox-Claude-Code able to work with the repo (SSH access, git identity, clone). Initialise the sprint log.
 
@@ -18,7 +18,7 @@
 
 **Next sprint picks up from:** Sandbox is ready for sandbox-Claude-Code to clone the repo and start working.
 
-### Sprint 1 — 2026-04-18 — Install LangGraph core
+### Sprint 1 — [Redline] — 2026-04-18 — Install LangGraph core
 
 **Goal:** Create a Python 3.13 venv at `/sandbox/.venv` and install LangGraph core (`pip install langgraph`) with no extras, no companions, no pinning. Verify with an import + version print. Capture friction honestly.
 
@@ -39,7 +39,7 @@
 
 **Next sprint picks up from:** Working `langgraph 1.1.8` install inside `/sandbox/.venv` (Python 3.13.12, uv 0.10.8). The venv is known-clean (recreated this sprint, not inherited). PyPI egress is confirmed working for future installs. No ADR was written this sprint — dependency installs within the already-declared framework stack (CLAUDE.md § Framework Stack) aren't architectural decisions. If a future sprint needs to deviate from that stack, that's when an ADR fires.
 
-### Sprint 2 — 2026-04-18 — Minimal LangGraph runs
+### Sprint 2 — [Redline] — 2026-04-18 — Minimal LangGraph runs
 
 **Goal:** Prove langgraph 1.1.8 actually runs in the sandbox — not just imports. Build the smallest graph that exercises state, nodes, edges, compilation, and invocation. No LLM, no checkpointer, no tools, no Deep Agents, no Postgres.
 
@@ -61,7 +61,7 @@
 
 **Next sprint picks up from:** Working minimal LangGraph in the repo at `src/experiments/sprint-02-langgraph-runs/hello_graph.py`. LangGraph 1.1.8 is confirmed functional end-to-end (import, compile, invoke, state threading, node ordering). `docs.langchain.com` remains policy-blocked; widen before any sprint whose brief depends on the hosted docs. No ADR written this sprint — nothing decided architecturally.
 
-### Sprint 3 — 2026-04-18 — MiniMax LLM call from a LangGraph node
+### Sprint 3 — [Redline] — 2026-04-18 — MiniMax LLM call from a LangGraph node
 
 **Goal:** Prove an LLM call can round-trip from inside a LangGraph node in this sandbox. Build a minimal graph that takes a prompt, routes it through a node that calls MiniMax-M2.7, captures the response into state, returns. Wire the LLM call through a dependency-injection seam driven by `OSCAR_LLM_PROVIDER` / `OSCAR_LLM_MODEL` / `OSCAR_LLM_API_KEY` so future sprints can add providers by branch, not by rewriting the LLM-calling code.
 
@@ -107,7 +107,7 @@ ok
 
 **Next sprint picks up from:** Working DI seam at `src/llm/` with one provider (MiniMax) wired end-to-end through a two-node LangGraph. The `_FACTORIES` dict in `src/llm/__init__.py` is the extension point; Sprint 4 is a natural fit for adding a second provider (OpenRouter or Anthropic-direct) to make the "adding a provider is just adding a branch" claim concrete under load, and for a test that swaps provider without changing graph code. Known follow-ups as they land: `<think>` / `reasoning_split` handling when a node consumes structured output (see surprise 1); provider-native tool-calling support when a sprint requires it (will likely need a richer per-provider client alongside the string-in/string-out seam, not a retrofit of it).
 
-### Sprint 4 — 2026-04-18 — OpenRouter as a second provider
+### Sprint 4 — [Redline] — 2026-04-18 — OpenRouter as a second provider
 
 **Goal:** Make good on ADR 008's closing prediction that a second provider drops into the DI seam with "one dict entry plus one small factory function; callers unchanged." Add OpenRouter alongside MiniMax, widen the sandbox policy for `openrouter.ai:443`, and prove end-to-end by running Sprint 3's script verbatim with `OSCAR_LLM_PROVIDER=openrouter`.
 
@@ -136,7 +136,7 @@ Files changed:
 
 **Next sprint picks up from:** DI seam now has two providers (MiniMax, OpenRouter), each reachable from the sandbox with policy blocks live at v8. Provider swap via env-var is demonstrated and one-line-diff. The predicted follow-ups from Sprint 3 remain open (reasoning-trace handling for MiniMax when structured output arrives, provider-native tool-calling when a sprint requires it). The "broker vs. direct" sovereignty distinction raised in surprise 3 is parked; PROJECT.md § LLM Policy can acknowledge it when a second concrete client configuration forces the decision.
 
-### Sprint 6 — 2026-04-18 — Deep Agents runs end-to-end
+### Sprint 6 — [Redline] — 2026-04-18 — Deep Agents runs end-to-end
 
 **Goal:** Substrate proof for Deep Agents in the sandbox. Install `deepagents`, build the smallest possible meaningful agent (one model, one trivial filesystem-touching tool, default system prompt), invoke it on a prompt that requires planning + filesystem use + the trivial tool, and confirm everything works. Pin all transitive deps. No General Counsel, no department roles, no sub-agents, no Adeu — substrate, not application. Equivalent to Sprint 2 (LangGraph runs) and Sprint 3 (LLM call round-trips), one layer up.
 
@@ -192,7 +192,7 @@ matches the second slug exactly.
 
 **Next sprint picks up from:** working Deep Agents end-to-end inside the sandbox at `src/experiments/sprint-06-deep-agents-runs/hello_deep_agent.py`. The chat-model DI seam at `src/llm/chat_model.py` is wired for OpenRouter only; MiniMax-via-`ChatOpenAI` (with `base_url`) is the documented next factory. The middleware stack, planning channel, and `StateBackend` filesystem are now characterised — Sprint 7 onward can begin populating Oscar's organisational structure (General Counsel orchestrator, department heads, specialist sub-agents, functional tools) on top of this foundation. Open follow-ups: (a) `BASE_AGENT_PROMPT` does not by itself induce planning — agents whose work benefits from explicit plan-tracking should say so in their system prompt; (b) LangSmith tracing is silently disabled until we add a key + policy block — defer until a sprint actually wants traces; (c) the `task` tool / general-purpose subagent are always present; future single-agent designs need to either tolerate this or build a stack without `SubAgentMiddleware`; (d) `.env` is git-ignored, so per-provider key state should be sanity-checked at every sprint start (Sprint 6 lost ~15 minutes to a stale-key-from-prior-sprint surprise).
 
-### Sprint 7 — 2026-04-18 — General Counsel + Head of Commercial routing scaffolding
+### Sprint 7 — [Redline] — 2026-04-18 — General Counsel + Head of Commercial routing scaffolding
 
 **Numbering note.** The brief was titled "Sprint 6" and referred to the previous log entry as "Sprint 5". In fact, the sprint log skipped the Sprint 5 slot — the previous entry ("Deep Agents runs end-to-end") is labelled Sprint 6. ADR 009, `src/experiments/sprint-06-deep-agents-runs/`, and the `requirements.txt` freeze all reference that Sprint 6 by number and path, so retroactively renaming it to Sprint 5 would cascade into the code and historical record. Instead, this entry is called Sprint 7 — keeping historical artefacts stable and the log append-only. Future sprints are invited to continue from Sprint 8.
 
@@ -331,7 +331,7 @@ Assertions in `main()` pass: `task == 1` and `task == 0` for the two invocations
 
 **Next sprint picks up from:** a two-role GC+Commercial routing scaffold at `src/experiments/sprint-07-gc-commercial-routing/gc_and_commercial.py`, with per-role DI slots in `.env` and an updated chat-model seam supporting both OpenRouter and MiniMax. Natural directions: (a) stand up a second department head (Company Secretariat, Data Protection, Employment, Property, or Litigation) to stress the routing pattern with more than one staffed option; (b) introduce the first functional agent within Commercial (a document-operation agent — comment-responder, accept/reject reasoner, defined-terms auditor) to prove the within-department toolkit shape; (c) attach a real document (NDA + playbook) and see whether the routing still lands on Commercial and whether Commercial can produce anything useful. Open follow-ups carried over: (i) `<think>` reasoning-trace stripping for structured consumers (Sprint 3 surprise 1, still deferred); (ii) LangSmith tracing needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent in every agent — including subagents — continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity is hard to get from a short prompt alone — a `response_format` or tighter prompt scaffolding likely needed before the substantive capability sprints.
 
-### Sprint 8 — 2026-04-18 — Clean MiniMax `<think>` pollution at the chat-model seam
+### Sprint 8 — [Redline] — 2026-04-18 — Clean MiniMax `<think>` pollution at the chat-model seam
 
 **Goal:** Stop MiniMax-M2.7's chain-of-thought wrapper (`<think>...</think>`) from landing inline in sub-agent `ToolMessage.content` in the orchestrator's message history (Sprint 3 surprise 1 → Sprint 7 surprise 3). Primary mechanism: MiniMax's native `reasoning_split=True` parameter. Fallback (only if primary fails): tag stripping. Targeted fix at the seam, not a restructuring.
 
@@ -438,7 +438,7 @@ Routing assertions still pass: `task == 1` for NDA invocation, `task == 0` for C
 
 **Next sprint picks up from:** Sub-agent responses flowing through the MiniMax chat-model seam now land clean (no `<think>` pollution) in orchestrator history. The Sprint 7 scaffold is the starting point as before — its follow-up directions (second department head, first functional agent within Commercial, real document attachment) are all still open. Carry-forwards from Sprint 7 remain: (i) `<think>` handling is **resolved** for MiniMax via this sprint's primary fix; for multi-turn specialist conversations, ADR 012's three plumbing steps will be needed (deferred until a sprint requires it); (ii) LangSmith tracing still needs a key + policy block; (iii) the latent `task` tool / general-purpose subagent continues to require prompt-level enforcement for single-agent postures; (iv) sub-agent response brevity still hard to get from a short prompt alone — unchanged.
 
-### Sprint 9 — 2026-04-18 — Accept/reject reasoner (first functional specialist under Head of Commercial)
+### Sprint 9 — [Redline] — 2026-04-18 — Accept/reject reasoner (first functional specialist under Head of Commercial)
 
 **Goal:** Populate the Head of Commercial from Sprint 7 with its first *functional* agent — a specialist that takes a single proposed contract markup plus a playbook rule and returns `accept | reject | counter`. End-to-end routing: General Counsel → Head of Commercial → accept-reject-reasoner. First sprint in which Oscar does any legal work, even trivially. Rule GL-001 (Governing Law: England and Wales) is hardcoded in the specialist's system prompt; persistent playbook storage deferred. Three synthetic test invocations exercise the three decision paths.
 
@@ -626,7 +626,7 @@ A third change landed mid-sprint but it is a *harness* fix, not a model-side ite
 
 Carry-forwards explicitly open: (i) structured-output reliability on MiniMax — prompt-level discipline is 3/3 across two runs with the iteration-2 preamble, but Surprise 2's fallback path is still the right defensive posture when specialist count grows; (ii) `reasoning_details` multi-turn preservation (ADR 012) — still deferred, no sprint yet needs it; (iii) LangSmith tracing still off; (iv) HITL not wired — if needed, `CompiledSubAgent` won't inherit parent `interrupt_on`, so configure per level (ADR 014); (v) the three latent `general-purpose` subagents continue to require prompt-level enforcement.
 
-### Sprint 10A — 2026-04-19 — Adeu integration research (plan only, no code)
+### Sprint 10A — [Redline] — 2026-04-19 — Adeu integration research (plan only, no code)
 
 **Goal:** Research-only sprint. Produce a written plan for introducing Adeu (the third-party OOXML redlining library) as the tool that applies edits to `.docx` files. No code in Oscar, no changes to `src/`. Deliverable: a committed research note covering (1) Adeu as it exists today, (2) the prior-art Claude-Plugin-MCP project's prompting discipline for lawyer-shape output, (3) a proposed plan for Sprint 10B+ including the specialist's system prompt, and (4) risks honestly surfaced. Sprint 10B is implementation — only after this plan is reviewed.
 
@@ -692,7 +692,7 @@ R1 Adeu dep-tree conflict with pinned manifest; R2 `fastmcp[apps]` is a hard dep
 
 **Next sprint picks up from:** a written plan (`docs/research/sprint-10-adeu-integration.md`) covering Adeu integration strategy, the redline-specialist's proposed system prompt, test-NDA shapes, test-transformation prompts and success criteria, and a recommended three-sprint split (10B substrate, 10C wiring, 10D verification). The two cloned reference repos remain in `/sandbox/reference-material/` for 10B/C/D to consult (read-only). No Oscar-side code, policy, dependency, or env-var state has changed this sprint. Human review of the plan is the gate before 10B starts — per the brief, "stop and surface for human review."
 
-### Sprint 10B — 2026-04-19 — Install Adeu 1.1.0 and prove SDK works mechanically (substrate only)
+### Sprint 10B — [Redline] — 2026-04-19 — Install Adeu 1.1.0 and prove SDK works mechanically (substrate only)
 
 **Goal:** Install Adeu into `/sandbox/.venv` and prove it works mechanically on its own — without any agent, without any specialist prompt, without any Deep Agents integration. Produce a synthetic `.docx`, invoke Adeu directly via its Python SDK with three hardcoded edits, inspect the resulting OOXML to confirm the track changes are structurally sound. Substrate proof, not application — Sprint 10C's job is to wrap this behind a redline-specialist. If Adeu is broken in our environment, learn it now with nothing upstream to disentangle.
 
@@ -753,7 +753,7 @@ All five track-change IDs (Chg:1 through Chg:5) are unique, sequential, and auth
 
 **Next sprint picks up from:** a working Adeu SDK install in `/sandbox/.venv` (119 pinned packages), a verified bare-bones smoke test at `src/experiments/sprint-10b-adeu-bare-bones/run.py` showing three edits producing structurally correct OOXML, and the five explicit SDK-shape observations above. Sprint 10C's scope — wrap `RedlineEngine` as a Deep Agents tool under a `redline-specialist` subagent beneath Head of Commercial, as proposed in the 10A research note — is unchanged by anything found this sprint. Open follow-ups for 10C: (a) decide whether the specialist calls `ModifyText` directly or via a narrower `insert_after`/`replace_in_place` wrapper that enforces the prefix-match idiom; (b) configure structlog to not bleed INFO lines into the agent trace; (c) pattern for reading/writing `.docx` bytes in a Deep Agents graph where `StateBackend` is text-only (10A risk R4, still open).
 
-### Sprint 10C — 2026-04-19 — Adeu API reference, test battery, idioms, and lawyer-shape criteria (research only)
+### Sprint 10C — [Redline] — 2026-04-19 — Adeu API reference, test battery, idioms, and lawyer-shape criteria (research only)
 
 **Goal:** Produce an exhaustive, evidence-based reference for every public Adeu operation plus a defined set of success criteria for Sprint 10E's lawyer-shape test. Research sprint. No agent integration, no Deep Agents work, no system prompts, no NDA transformations. The deliverables — one reference document, one test battery, one idioms guide, one criteria document — become the foundation for every Adeu-using sprint that follows.
 
@@ -813,7 +813,7 @@ No cases where Adeu's natural API was judged *genuinely hostile* to LLM use. The
 
 **Next sprint picks up from:** four artefacts in `docs/reference/` and `src/experiments/sprint-10c-adeu-reference/`, a passing 82-test battery on adeu==1.1.0, a documented mitigation for structlog noise (10B follow-up (b) now solved), and four questions flagged above for Arturs's human decision before 10D begins. Sprint 10D can begin integration work; the substrate's shape is now fully mapped.
 
-### Sprint 10D — 2026-04-19 — First end-to-end agent-driven redline: litigation → arbitration on a synthetic NDA
+### Sprint 10D — [Redline] — 2026-04-19 — First end-to-end agent-driven redline: litigation → arbitration on a synthetic NDA
 
 **Goal:** Wire Adeu into Oscar as a new functional specialist (`redline-specialist`) under the Head of Commercial. Produce the first end-to-end agent-driven redline on a synthetic NDA. One transformation only: convert the dispute resolution clause from litigation (exclusive jurisdiction of the courts of England and Wales) to binding arbitration. One invocation through the full GC → HOC → redline-specialist chain. Mechanical verification only; lawyer-shape quality is explicitly out of scope for this sprint — that's Arturs's job in Word, and Sprint 10E iterates on his findings.
 
@@ -1002,7 +1002,7 @@ Message 4 contains a false claim that the file didn't exist (the subagent noneth
 
 **Next sprint picks up from:** a working three-level org chart (GC → HOC → {redline-specialist, accept-reject-reasoner}), one end-to-end redline in the sandbox, and the four carry-forwards above. Sprint 10E inherits Arturs's review of this .docx + the 10C criteria doc, and iterates (most likely on the specialist prompt, possibly on the model).
 
-### Sprint 10E — 2026-04-19 — Import surgical-span discipline from Claude-Plugin-MCP; re-run 10D's transformation with lawyer-shape output
+### Sprint 10E — [Redline] — 2026-04-19 — Import surgical-span discipline from Claude-Plugin-MCP; re-run 10D's transformation with lawyer-shape output
 
 **Goal.** Fix the two lawyer-shape failures Sprint 10D left in `nda-output.docx` — over-broad 47-word w:del/w:ins pairs and a broken audit trail (empty `<w:delText/>` inside a nested `w:del`, duplicate w:ins) — by importing surgical-span discipline from Claude-Plugin-MCP into the MiniMax-backed redline-specialist's system prompt. Re-run the same litigation→arbitration transformation on the same input NDA; self-verify OOXML mechanically without handing the output to Arturs for review. Per brief: prompt + tool-return + post-hoc validation layers only; no code copied, no model swap.
 
@@ -1132,7 +1132,7 @@ Additional defensive add (not in the original plan but cheap): a module-level `_
 
 (d) *HOC output-envelope hardening.* Tighten HOC's "relay verbatim" rule and/or have the specialist return a JSON envelope (`status`, `output_path`, `summary`) that HOC reads literally — deferred 10D (iii) carry-forward.
 
-### Sprint 10F — 2026-04-20 — Identification test: can MiniMax find the surgical spans itself, or does it need 10E's hand-wired decomposition?
+### Sprint 10F — [Redline] — 2026-04-20 — Identification test: can MiniMax find the surgical spans itself, or does it need 10E's hand-wired decomposition?
 
 **Goal.** Sprint 10E proved MiniMax can EXECUTE a surgical-span decomposition when the prompt hands it byte-identical CALL 1 / CALL 2 values. 10F removes that scaffolding. The specialist is given the general surgical-span rule and the target shape (LCIA arbitration with five named elements — seat London, LCIA Rules, sole arbitrator, English language, final-and-binding), but NOT the specific phrases in the existing document. The open question, explicitly named in 10E's scope boundary: can MiniMax read §9, decide which phrases need to change, and apply narrow tracked-change edits without being told the spans? Production Oscar cannot carry per-transformation CALL 1 / CALL 2 values — a user asking "convert litigation to arbitration" expects the specialist to make that decomposition decision autonomously. If 10F fails, identification is beyond MiniMax's reach at this shape and the next step is a model swap to GPT-5.4 (Sprint 10G).
 
@@ -1282,7 +1282,7 @@ Three-way diagnostic (matching 10E's structure):
 
 (d) *Expand test coverage to a second transformation (T1 make-mutual or T2 add-LoL).* Defer until identification-shape is settled on T3 (this transformation).
 
-### Sprint 10G — 2026-04-20 — Plan-before-act test: does a "plan first" prompt section close 10F's decomposition gap on MiniMax?
+### Sprint 10G — [Redline] — 2026-04-20 — Plan-before-act test: does a "plan first" prompt section close 10F's decomposition gap on MiniMax?
 
 **Goal.** Sprint 10F showed MiniMax identifies the right clause and recalls the five required arbitration elements, but bundles the transformation into one wide `modify_text` plus one degenerate no-op rather than decomposing into a handful of narrow edits. The degenerate second call was particularly telling — MiniMax understood multiple calls were expected and produced one to satisfy that expectation, but had nothing substantive left to do because the first call had already bundled everything. 10G's hypothesis: this is planning absence, not a decomposition capability ceiling. Test: one prompt-section addition (``PLAN BEFORE YOU ACT``) forcing the specialist to write out a structured edit plan in plain text before any tool call. Same agent, same MiniMax-M2.7 model, same NDA, same transformation, same tool surface. Three outcomes mapped in the brief: A (sensible plan + narrow execution — planning absence was the 10F failure, solved), B (sensible plan + wide/wrong execution — planner within MiniMax's reach, executor not, motivates split), C (no sensible plan — decomposition is a capability ceiling, motivates model swap).
 
@@ -1515,7 +1515,7 @@ In short: don't do the split as 10H. Do the model swap as 10H, and let its outco
 
 (d) *Expand test coverage to T1 (make-mutual) or T2 (add-LoL).* Defer until T3's specialist capability is settled by 10H.
 
-### Sprint 10H — 2026-04-20 — Planner / executor split (Shape A): GPT-5.4 planner + MiniMax executor under Head of Commercial
+### Sprint 10H — [Redline] — 2026-04-20 — Planner / executor split (Shape A): GPT-5.4 planner + MiniMax executor under Head of Commercial
 
 **Goal.** Build and validate Shape A per Arturs's architectural choice: a frontier planner (GPT-5.4 via OpenRouter) decomposes the transformation into a narrow JSON edit plan; a specialist executor (MiniMax-M2.7) consumes the plan and applies each entry via `modify_text` / `insert_text`. Both under Head of Commercial. Same NDA, same transformation as 10D/10E/10F/10G (litigation → binding LCIA arbitration). Primary end-to-end run plus one control run (executor alone, handed 10E's hand-decided spans in the 10H plan contract) to isolate the executor's pure-execution discipline from the planner's quality.
 
@@ -1698,7 +1698,7 @@ The old `OSCAR_LLM_REDLINE_SPECIALIST_*` triple remains in `.env.example` and `d
 
 (d) *Expand `_HocInvocationCapture` to all subagents* — small observability fix, independent of architectural direction. Worth landing as a housekeeping commit even if 10I goes a different way.
 
-### Sprint 10I — 2026-04-21 — Executioner-framing capability test: does clause-scoped single-agent framing unlock decomposition that document-scoped framing couldn't?
+### Sprint 10I — [Redline] — 2026-04-21 — Executioner-framing capability test: does clause-scoped single-agent framing unlock decomposition that document-scoped framing couldn't?
 
 **Goal — and a pivot from TODO.md item 42.** 10H anticipated 10I as "re-run Shape A with HOC's text-relay unreliability routed around". This sprint takes a different direction, as agreed with Arturs ahead of the run. The reframing: 10F/10G tested *document-level single-agent framing* ("take this document, work out the edits, apply them"); the architecture the earlier sprints were converging on actually requires *clause-level executioner framing* (planner decides at document level, executioners each handle one clause with a pre-decided instruction). That's a materially narrower scope than 10F/10G ever tested. Before designing the orchestration for it, answer the capability question: can MiniMax function as a clause-level executioner? If yes, an all-MiniMax pipeline (planner aside) is viable; if no, decomposition is a capability ceiling at any scope and 10J must explore a deterministic executor. The HOC-bypass question from TODO.md item 42 remains open but is deferred to the planner/executor architecture sprint, not this capability test.
 
@@ -1879,7 +1879,7 @@ Execution shape reading: 10H control is the only Outcome-A-class shape (three na
 
 **No new dependencies, no policy widenings, no env-var triple committed to `.env.example`.** `requirements.txt` unchanged. `OSCAR_LLM_REDLINE_EXECUTOR_SONNET_*` exists only at shell level for the diagnostic Sonnet run — no production allocation yet.
 
-### Sprint 10J — 2026-04-21 — Deterministic edit decomposition pipeline: does MiniMax drafts + Python word-diff + Adeu apply produce lawyer-shape output?
+### Sprint 10J — [Redline] — 2026-04-21 — Deterministic edit decomposition pipeline: does MiniMax drafts + Python word-diff + Adeu apply produce lawyer-shape output?
 
 **Goal.** Test a different architecture: the LLM drafts target clause text given current clause text, deterministic Python word-diffs current vs target, Adeu applies the resulting narrow edits. No LLM is asked to bundle or narrow. 10E–10I established that when an LLM owns the decomposition decision — at any scope, under any framing, across two model tiers — it bundles. 10J moves the decomposition out of the LLM's plate entirely. Same NDA, same §9 transformation (litigation → LCIA arbitration with five elements: seat London, LCIA Rules, sole arbitrator, English language, final and binding), for direct comparability across 10F / 10G / 10H-control / 10I-MiniMax / 10I-Sonnet / 10J.
 
@@ -2044,4 +2044,70 @@ Span widths: w:ins=54 words (>50, OVER-BROAD), w:del=29 words (>20, SUSPICIOUS).
 **Next sprint picks up from:** (a) the feature branch `sprint-10j-word-diff-pipeline` with complete code + artefacts; (b) the finding that pipeline mechanics are sound but drafter output shape determines the result — 10K tests whether conservation discipline in the Stage 1 prompt produces the narrow-block shape; (c) the Plan-agent-informed design decisions (echo-as-truth, Unicode normalisation, `diff_cleanupSemanticLossless`, short-EQUAL absorption, ±8-word uniqueness widening, discrete-edit property) recorded and empirically shakedown-tested — 10K inherits them without rework.
 
 **No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged (`diff-match-patch==20241021` was already pinned). `OSCAR_LLM_REDLINE_EXECUTOR_*` triple reused from 10H.
+
+### Sprint M1 — [Infrastructure] — 2026-04-21 — Multi-track discipline infrastructure
+
+**Goal.** Establish the discipline both tracks (Redline, CoSec) will operate under going forward. No feature work, no agent code. Mechanical refactor + convention update, directly on main, so both tracks pick up the new shape on next pull. Sprint 10K (redline) and Sprint C1 (CoSec) both wait for M1 to land before starting.
+
+**Context.** Oscar has been single-track (redline) for ten sprints (10A–10J). CoSec is about to join. Without convention, the two tracks would collide — duplicate sprint numbers, ADR collisions, silent SPRINT_LOG overwrites on merge, mixed track-specific / shared code. M1 establishes the shape that prevents those failure modes before they happen.
+
+**What was built.**
+
+1. **Track-aware `src/` layout.**
+    - `src/llm/` → `src/shared/llm/` (cross-track DI seam; 4 files, code untouched).
+    - `src/experiments/sprint-{02,03,06,07,09,10b,10c,10d,10e}/` → `src/redline/experiments/sprint-*` (9 experiment directories).
+    - `src/cosec/experiments/.gitkeep` to track the empty CoSec space.
+    - `sprint-10h/` skipped: its contents on main were only gitignored `__pycache__`; the directory will first materialise when the 10H feature branch merges and adopts the new layout.
+    - Six experiment files updated for the deeper path: `sys.path.insert(..., parents[2])` → `parents[3]`; `from llm.chat_model` → `from shared.llm.chat_model` (5 files); `from llm import ...` → `from shared.llm import ...` (sprint-03).
+    - Two pre-existing docstring commands corrected: `python -m src.experiments.sprint-10d.build_input` → `python src/redline/experiments/sprint-10d/build_input.py` (the `-m` form never worked — module paths can't contain hyphens).
+
+2. **Track-aware `docs/` layout.**
+    - `docs/research/sprint-10-adeu-integration.md` → `docs/redline/research/` (explicitly redline sprint research).
+    - `docs/reference/adeu-lawyer-shape-criteria.md` → `docs/redline/reference/` (the lawyer-shape criteria describe how a *redline* reads, redline-specific by nature).
+    - `docs/reference/adeu-{api-reference,idioms}.md` — left in place as cross-track SDK references.
+    - `docs/sandbox-egress-summary.md` and `docs/secrets.md` — left at `docs/` top level as cross-track infrastructure docs; neither was in the brief's layout, and both are track-agnostic.
+    - New `docs/redline/README.md` and `docs/cosec/README.md` pointer files explaining the split.
+    - Three ADR placeholders reserving numbers 019-021 for the redline track's 10H-deferred ADRs (planner/executor split pattern, plan data contract, specialist tier allocation). Content is a one-line reservation note; real ADRs will overwrite at the moment of decision.
+
+3. **Governance updates.**
+    - New `CLAUDE.md § Multi-Track Discipline` section: pull before push, check the other track at sprint start, SPRINT_LOG headings lead with track tag, TODO items tag at line start, ADRs use a single numbering sequence with per-entry track tag from 019 onwards, ADR number reservation via placeholder files, track-specific principles in `docs/{track}/` not `PROJECT.md`, track-specific code in `src/{track}/` with cross-track utilities in `src/shared/`.
+    - PROJECT.md: new `Tracks` section near the top; retroactive `[Redline]` tag on all 19 existing Sprint Index rows; this sprint's row (M1) appended.
+    - SPRINT_LOG.md: retroactive `[Redline]` tag on all 19 existing headings (bodies untouched); this entry appended. Heading format: `### Sprint N — [Redline] — YYYY-MM-DD — Title` (tag as its own em-dash-separated segment, preserving the existing three-segment rhythm).
+    - TODO.md: track tags on all 50 items (the file has two items numbered 49 — a pre-existing numbering duplicate, not touched) — 29 `[Redline]`, 21 `[Infrastructure]`, 0 `[CoSec]` (CoSec is not staffed yet; its track-specific items begin with Sprint C1). Numbering and body text preserved. Item 47 (*Second department head under GC*) tagged `[Infrastructure]` because the entry is about GC routing-surface stress-testing, not about CoSec work itself — though CoSec is named as a candidate.
+
+4. **Commits on main (no feature branch).** Infrastructure changes both tracks need to operate under should not live on a feature branch where only one track sees them. The three-commit sequence:
+    - `21b55e8` — Commit A1: directory renames (`git mv`) + `.gitkeep` for the empty CoSec space.
+    - `ffe37da` — Commit A2: import and sys.path content updates (8 files). See Surprise 1 for why these landed in a follow-up commit rather than folded into A1.
+    - `23793ba` — Commit B: `docs/` refactor, READMEs, ADR placeholders.
+    - Commit C: this entry and the governance updates that accompany it.
+
+**Verification.**
+
+- `grep -r src.experiments src/` — no hits.
+- `grep -r src.llm src/` — no hits.
+- `grep -rn '^from llm\.\|^import llm' src/` — no hits (all 6 call sites migrated).
+- `grep -rn 'parents\[2\]' src/` — no hits (all 6 sys.path lines bumped to `parents[3]`).
+- `grep -rn 'from shared.llm' src/` — 6 hits at the expected call sites.
+- `py_compile` over all 21 `src/**/*.py` files — clean.
+- **Sprint 10E `verify_output` import test.** Loaded `run.py` at its new path via `importlib.util.spec_from_file_location`, called `verify_output` on the committed `nda-output.docx`. Result: `ok=True`, `w:ins=2`, `w:del=1`, 30-word WARN on `w:ins[id=3]`, litigation-phrase spot-check OK. Identical to the pre-move Sprint 10E findings — confirming the sys.path and import refactor works at runtime.
+
+**Surprises.**
+
+1. **`git mv` staged only the renames; my subsequent file edits were left unstaged, and the first commit (21b55e8) captured renames with *old* content.** Caught by inspecting the `git log --stat` output: all rename lines showed `similarity index 100%` — meaning the pre- and post-rename bytes were identical, i.e. my edits hadn't been committed. Fixed by a follow-up commit (`ffe37da`) containing just the 8 content edits. Lesson for future refactors: when mixing `git mv` with content edits on the moved files, either stage the edits explicitly after the mv (`git add <moved-path>`) or do the edits first on the old paths and let one commit carry both the rename and the content change via git's rename detection. The fix pattern (A1 + A2) preserves blame-ability better than an amend would.
+2. **`docs/sandbox-egress-summary.md` and `docs/secrets.md` were not in the plan's mental model.** Neither was flagged in the brief, and I hadn't read them before planning. Both are cross-track infrastructure docs; I left them at `docs/` top level as a neutral call. If Arturs wants them in a more disciplined home (e.g. `docs/reference/`, or a new `docs/infrastructure/`), that's a follow-up — not one to decide implicitly during a mechanical refactor.
+3. **`docs/research/` was a one-file directory.** After moving `sprint-10-adeu-integration.md` to `docs/redline/research/`, the directory emptied. `rmdir`'d it rather than leaving a dangling empty folder. Symmetric: the old `src/experiments/sprint-10h/__pycache__/` (no tracked files on main, only feature-branch pycache) was removed along with the empty `src/experiments/` parent. Both cleanups were implicit-in-intent per the brief's target layout; calling them out so future archaeology can see the decision.
+4. **Heading format choice for retroactive `[Redline]` tag.** Picked `### Sprint N — [Redline] — YYYY-MM-DD — Title` (four segments, three em-dashes) over `### Sprint N [Redline] — YYYY-MM-DD — Title` (tag hugging sprint number, three segments, two em-dashes). The four-segment shape preserves the existing Sprint/Date/Title rhythm and keeps the tag as a visually distinct field. No strong arguments either way; surfaced during planning and defaulted here. Either is easy to migrate later.
+
+**Carry-forward for Sprint 10K (redline) and Sprint C1 (CoSec).**
+
+(i) Pull before doing anything else — both tracks need to rebase onto the new layout. Scripts or editor configs pointing at `src/experiments/...` or `src.llm.*` need updating. Re-running any experiment on the new paths requires the new `sys.path.insert(..., parents[3])` offset plus `from shared.llm.*` imports, all already on main.
+
+(ii) Sprint 10H's feature branch (`sprint-10h-planner-executor-split`) has code under `src/experiments/sprint-10h/`. When that branch is eventually merged, reconcile to `src/redline/experiments/sprint-10h/` with the same `parents[3]` + `from shared.llm.*` updates applied to the other experiments. Same shape of fix as the 6 files touched in Commit A2.
+
+(iii) ADR 019-021 placeholders are reservations, not commitments. If a redline sprint writes any of those ADRs, the placeholder file is overwritten with the real ADR content at the moment of decision. If they're never written, the placeholders stay — better an unused reservation than a numbering collision when CoSec reaches 019 first.
+
+(iv) CoSec track is not staffed yet. Sprint C1 will create `docs/cosec/`'s first real content and begin populating `src/cosec/experiments/`. Today's placeholders (`.gitkeep`, README pointer) are signal that the space exists, not content.
+
+**No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged. Empty `src/cosec/experiments/.gitkeep` added.
+
 

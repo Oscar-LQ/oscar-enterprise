@@ -32,6 +32,21 @@ If the repo doesn't answer the question, say so explicitly and propose a small e
 
 ---
 
+## Multi-Track Discipline
+
+Oscar is developed across multiple parallel tracks. Current: **Redline** (10-series sprints) and **CoSec** (C-series). Infrastructure sprints spanning tracks use the **M-series**. The Sprint Index in `PROJECT.md` shows all three. Established by Sprint M1.
+
+- **Pull before push, always.** `git pull --rebase origin main` before `git push`. Both tracks write to `main`; a missed pull silently overwrites the other track's governance updates.
+- **At sprint start, check the most recent `SPRINT_LOG.md` entry on each other track.** Note what is in flight and which feature branches might land during your sprint.
+- **SPRINT_LOG headings lead with the sprint number and a track tag**, e.g. `### Sprint 10K — [Redline] — <date> — <title>`.
+- **TODO entries are tagged `[Redline]`, `[CoSec]`, or `[Infrastructure]` at item start**, before the bold title. Numbering is one sequence across all tracks.
+- **ADRs use one numbering sequence across tracks.** From 019 onwards, titles carry a track tag, e.g. `ADR 019 [Redline] — <title>`. ADRs 002-018 predate the convention and stay untagged.
+- **When plan mode identifies likely ADRs, reserve the numbers with placeholder files** at `docs/adr/NNN-PLACEHOLDER-*.md`. Other tracks see the reservation and reach past it; an unused reservation is cheaper than a numbering collision.
+- **Track-specific architectural principles live in `docs/{track}/`, not `PROJECT.md`.** PROJECT.md carries only cross-track principles.
+- **Track-specific code lives under `src/{track}/`.** Cross-track utilities live under `src/shared/` and require both-track-awareness when modified.
+
+---
+
 ## Architecture & Design
 
 ### Classes for Stateful Services
