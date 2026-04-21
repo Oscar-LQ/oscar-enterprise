@@ -2259,3 +2259,158 @@ The decision between (b), (c), (d) is one Arturs's call — the data from 10E th
 **No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged. `OSCAR_LLM_REDLINE_EXECUTOR_*` triple reused from 10H/10I/10J.
 
 
+### Sprint 10L — [Redline] — 2026-04-21 — Port CPM's document-vs-new diff mechanism; re-process 10K's output
+
+**Goal.** Test whether porting Claude-Plugin-MCP's (CPM) actual per-edit diff mechanism — `find_match_three_layer` for location, `diff_words(runs_plain_text_at_matched_location, new_text)` for word-level narrowing — and re-processing Sprint 10K's existing `parsed-edits.json` produces lawyer-shape narrow OOXML. The data-flow clarification note (commit f01567f) had corrected a load-bearing assumption in 10K's framing: CPM's diff is document-vs-new_text, not target_text-vs-new_text, and 10K never ran MiniMax's output through CPM's actual post-processor. 10L answers whether 10K's Outcome C was "MiniMax cannot decompose" (capability ceiling) or "Oscar's pipeline was missing the right post-processor" (infrastructure gap). No new LLM calls; one run. Same NDA, same 10K parsed-edits.json, for direct comparability with 10K.
+
+**Pre-implementation research note on main.** `docs/redline/research/sprint-10L-port-feasibility.md`. Verifies `find_match_three_layer` and `diff_words` as liftable against Adeu 1.1.0 (both depend only on public Adeu attributes or are pure Python + `diff_match_patch`), and records a manual trace of Adeu's `trim_common_context` on 10K's inputs. Key Phase 1 finding: `trim_common_context` DID fire in 10K's run and returned `(0, 0)` because 10K's target starts `'T'` / new_val starts `'A'` (prefix mismatch at position 0) and target ends `'Agreement.'` / new_val ends `'parties.'` (suffix mismatch at position -2 after word-boundary backtrack). Adeu's native surface has no equivalent to word-level diff on the application path — the port was required, not an option to side-step by re-invoking Adeu differently.
+
+**Substrate choice.** Port CPM's mechanism (find + diff) verbatim; adapt the application layer. Specifically: ported `diff_words` + `verify_reconstruction` (word_diff.py:27-72, pure Python + diff_match_patch); ported `find_match_three_layer` (surgical_helpers.py:40-69, reads only public Adeu attributes); ported `PlainTextIndex` + helpers (plain_text_index.py, self-contained third-layer fallback). Did NOT port `build_diff_elements` / `perform_dom_surgery` / `apply_edits_surgically` — those couple to `engine._create_track_change_tag` and `mapper._build_map()` (Adeu-private). Instead, 10L groups diff ops into blocks at long-EQUAL boundaries (content-token threshold 2, pre-committed, no tuning) and emits one narrower `ModifyText` per block, applied via Adeu's public `RedlineEngine.process_batch`. The mechanism under test — find + diff — is unchanged; only the application route differs. One consequence: 10L's OOXML is block-shaped (one w:del + w:ins pair per block) rather than op-shaped (per-word spans from direct DOM surgery). The span-width test operates at block level, which is the right level for lawyer-shape evaluation.
+
+**What was built.** Feature branch `sprint-10L-document-vs-new-diff`. `src/redline/experiments/sprint-10L/` with: `post_processor.py` (the port + block-grouping + anchor-widening, 362 lines), `run.py` (driver + verify_output copied inline from 10E + clean-view §9 read-back + transcript), `parsed-edits.json` (copied from 10K's branch via `git show`, unchanged), `nda-input.docx` (same route, unchanged), `narrowed-edits.jsonl` (post-processor output pre-Adeu-application, for inspection), `nda-output.docx`, `transcript.txt`. All on the feature branch.
+
+**10K's parsed-edits.json (10L's input; verbatim):**
+
+```json
+[
+  {
+    "target_text": "The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+    "new_text": "Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.",
+    "comment": null
+  }
+]
+```
+
+29-word target, 56-word new_text, null comment.
+
+**Post-processor output (narrowed-edits.jsonl, verbatim):** one narrowed edit, which is byte-identical to the input.
+
+- `raw_target` (29w, same as input target_text)
+- `raw_new` (56w, same as input new_text)
+- `anchor_tokens_prepended=0`, `anchor_tokens_appended=0` (no anchoring needed because the target was already unique)
+- `op_trace`: 2 ops —
+  - `[DEL]` the full 29-word target
+  - `[INS]` the full 56-word new_text
+
+`diff_words` returned exactly two ops: one wide DELETE and one wide INSERT. Block-grouping produced a single block (no long-EQUAL separators in the diff output). **The expected shared substring "arising out of or in connection with this Agreement" — verbatim in both target and new_text — was not preserved as an EQUAL op.** See "Surprise 1" below for the mechanism.
+
+**Verbatim Adeu call** (sole narrowed edit, pre-apply):
+
+```
+ModifyText(
+  target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.',
+  new_text='Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.',
+)
+```
+
+`RedlineEngine.process_batch` returned `{edits_applied: 1, edits_skipped: 0}`. No `BatchValidationError`.
+
+**verify_output.**
+
+- `exists`: 40,253 bytes, 21-part zip (one byte larger than 10K's 40,252 — irrelevant zip-compression noise).
+- `tracked changes`: `w:ins=1, w:del=1`.
+- **`WARN: w:ins[id=2] span=56 words — >50, almost certainly over-broad (lawyer-shape fail)`.**
+- **`WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)`.**
+- Empty-delText nested-delete: not present.
+- Duplicate w:ins: not present.
+- `SPOT-CHECK OK`: litigation phrase preserved in `w:delText`.
+
+**Clean-view §9 (Accept-All simulated).** Text-identical to 10K's clean-view §9 (governing-law sentence intact; all five LCIA elements present; the block substitution produces the same semantic result via a different OOXML route).
+
+**Per-edit span-width comparison (the headline).**
+
+| # | 10K direct-Adeu | 10L mechanism + Adeu |
+|---|---|---|
+| Edit 1 | 1 block; w:del=29w; w:ins=56w | 1 block; w:del=29w; w:ins=56w |
+
+**Total span widths and block count identical between 10K and 10L.** The ported mechanism did not narrow 10K's output. Net narrowing: zero.
+
+**Eight-sprint comparison table** (same NDA, same §9 litigation→arbitration transformation across every row; 10L uniquely reprocesses 10K's data, does not invoke an LLM):
+
+| Sprint | LLM run | Shape | Edit count | w:ins widths | w:del widths | modify / insert | Five elements | Audit trail clean | Comments |
+|---|---|---|---|---|---|---|---|---|---|
+| 10F | MiniMax | document-single-agent | 2 (1 + 1 no-op) | 33 | 12 | 2 / 0 | yes | yes | 0 |
+| 10G | MiniMax | plan-first | 1 | 41 | 29 | 1 / 0 | yes | yes | 0 |
+| 10H control | MiniMax | handed-spans | 3 | 6, 30 | 11 | 1 / 2 | yes | yes | 0 |
+| 10I primary | MiniMax | executioner | 0 | — | — | 0 / 0 | n/a | n/a | 0 |
+| 10I Sonnet | Sonnet 4.6 | executioner | 1 | 71 | 29 | 1 / 0 | yes | yes | 1 |
+| 10J | MiniMax | prose + doc-diff | 1 | 54 | 29 | 1 / 0 | yes | yes | 0 |
+| 10K | MiniMax | CPM full-scaffold + direct-Adeu | 1 | 56 | 29 | 1 / 0 | yes | yes | 0 |
+| **10L** | **MiniMax (10K data, reprocessed — no LLM run)** | **CPM mechanism + process_batch** | **1** | **56** | **29** | **1 / 0** | **yes** | **yes** | **0** |
+
+10L's row is structurally telling: the CPM mechanism's per-edit diff, applied post-hoc to 10K's existing MiniMax output, produced the same 1-block / 56w-ins / 29w-del shape as 10K's direct-to-Adeu run. The 10H control remains the only row with lawyer-shape narrow OOXML (three edits, widest insert 30w), and its input was 10E's hand-decided spans — not a model's autonomous decomposition.
+
+**Outcome: C.** The ported CPM mechanism does not narrow 10K's existing MiniMax output. Finding: 10K's Outcome C was NOT solely a case of "Oscar's pipeline was missing the post-processor that would have narrowed the output" — the post-processor produces the same shape. The "missing post-processor" hypothesis is falsified for this specific transformation.
+
+**Diagnosis — `diff_cleanupSemantic` is the load-bearing collapse step.** Raw `diff_match_patch.diff_main` (without cleanup) produces 72 tiny token-level ops on 10K's inputs, including shared fragments: " ", " of ", "arising", " disputes ", "Agreement.", individual whitespace tokens between words. CPM's `diff_words` applies `diff_cleanupSemantic` after `diff_main` (verbatim per `word_diff.py:55`), and this cleanup detects the scattered shared fragments as short-runs-surrounded-by-changes and absorbs them into the neighbouring DELETE + INSERT. Its heuristic judges the "semantic" shape to be one wide bundle.
+
+| Cleanup pass | ops produced | widest DEL (tokens) | widest INS (tokens) |
+|---|---|---|---|
+| (none) | 72 | 1 | 7 |
+| `diff_cleanupSemantic` | 2 | 29 (words) | 56 (words) |
+
+This holds regardless of whether CPM's OOXML is emitted per-op via direct DOM surgery (CPM's native path) or block-by-block via `process_batch` (10L's substrate adaptation). The collapse happens upstream of the application route. **CPM's narrow OOXML on Opus outputs therefore depends on Opus producing `new_text` with longer preserved phrasing runs than MiniMax's wholesale rewrites — long enough that `diff_cleanupSemantic` preserves them instead of collapsing.** On MiniMax's 10K output, the shared runs are too short and too scattered; cleanup collapses them.
+
+**What this refines about the "MiniMax can't decompose" framing.** The 10F–10K arc framed decomposition as the LLM's responsibility: MiniMax was asked to emit narrow `target_text` spans under increasingly explicit discipline, and didn't. 10L tested the alternative framing — that a correctly-built post-processor could recover narrowness downstream from the LLM's wholesale rewrite. The result is that the post-processor, as CPM wrote it, cannot. The narrowness property is jointly a function of (i) the LLM's output phrasing shape and (ii) the cleanup pass's behaviour on that shape. CPM relies on Opus producing (i) that's favourable for (ii); 10L establishes that MiniMax does not, and that cleanup-pass choice is load-bearing in a way CPM's SKILL.md does not disclose. This is a more specific finding than either "MiniMax can't decompose" or "the post-processor was missing": the narrowness lever has at least three points of intervention (LLM drafting, diff cleanup, OOXML emission granularity), and CPM's default stack only controls the third via direct DOM surgery — which 10L's per-block emission already tries to approximate.
+
+**Surprises.**
+
+1. **`diff_cleanupSemantic` collapsed the shared 10-word substring "arising out of or in connection with this Agreement" despite it appearing verbatim in both target and new_text.** Before the run, the pre-committed expectation was Outcome B: two blocks (one for the forum swap + one for the LCIA-machinery insertion). The raw `diff_main` does find the shared substring (token-by-token, alongside many shorter shared fragments). Semantic cleanup treats the whole pattern as scatter-on-a-sea-of-changes and absorbs the longest shared run with its neighbours. This is a diff_match_patch library behaviour, not a CPM choice — CPM just follows its documented default. Future ports should probe `diff_cleanupSemantic` as a tunable rather than a safe default.
+2. **The post-processor's block-grouping threshold of 2 content tokens never mattered.** Because `diff_cleanupSemantic` emits only 2 ops (one DEL + one INS) with no interior EQUALs, there is no boundary decision for the threshold to make. Threshold was pre-committed per brief; the fact that it was unobserved is a diagnostic detail, not a tuning opportunity.
+3. **Anchor-widening was never triggered.** The single block's raw target_text (the 29-word full sentence from 10K) is unique in the NDA's mapper.full_text on first check. `anchor_tokens_prepended=0`, `anchor_tokens_appended=0`. The widening logic is correct and exercised by a unit test during the port (uniqueness check at entry), but 10K's input did not require it. Future data with many small blocks would exercise it.
+4. **Output size delta: 40,253 vs 10K's 40,252 bytes (1 byte).** The OOXML content is semantically equivalent to 10K's output (same one modify edit producing one w:del + one w:ins); the byte difference is zip compression noise from file-ordering or timestamps. Diffs against 10K would show no substantive DOM change.
+5. **10K's edit had `comment=null`, so the post-processor's "attach comment to first block only" rule never surfaced visibly.** If a future edit with a non-null comment produces multiple blocks, the mechanism attaches the original comment to block 1 and null-comments the remaining blocks. This is a content judgement worth re-evaluating in context — a comment on a pre-decomposition edit might belong on whichever block carries the substantive change, not necessarily the first by diff-op order. Flagged as a carry-forward for whichever sprint first decomposes an edit with a non-null comment.
+
+**Commenting discipline (carried over from 10K).** `comment: null` on 10K's input → null on 10L's single narrowed block → zero Word comments in the output. Unchanged from 10K.
+
+**Red-Zone behaviour (carried over from 10K).** 10L did not invoke an LLM; the Red-Zone authority-framework question is downstream of MiniMax's reply and irrelevant here. Carry-forward (iv) from 10K (use `reasoning_split=False` to probe whether Step C was consulted at reasoning layer) remains open and unaddressed.
+
+**Substrate behaviour.** Adeu 1.1.0 applied the single narrowed edit without issue — identical to 10K. `validate_edits` returned empty, `process_batch` applied the one edit, `trim_common_context` fired and returned `(0, 0)` (same as 10K, same reason — no shared prefix/suffix). `BatchValidationError` did not surface. Open question from 10K ("does Adeu 1.1.0's stricter validation reject things 0.7.x accepted?") remains untested from this run; same single-edit shape as 10K.
+
+**Two Phase 1 questions resolved.**
+
+1. **Artefact access.** `git show sprint-10k-claude-plugin-mcp-port:src/redline/experiments/sprint-10k/<file>` from a fresh branch off main worked with no friction. Both `parsed-edits.json` and `nda-input.docx` copied cleanly into 10L's directory. No branch checkout needed.
+2. **Adeu-surface sufficiency (most important Phase 1 question).** `trim_common_context` fired in 10K's actual run and returned `(0, 0)` — no amount of re-invoking Adeu differently would have narrowed the output. The port was required; 10L could not shrink to "rerun 10K's edit through a different Adeu call." This finding is recorded in the Phase 1 research note and is a reusable fact for future sprints considering whether Adeu's native surface suffices.
+
+**Outcome judgement: C.** CPM's find + diff mechanism, faithfully ported, does not narrow 10K's MiniMax output. The headline per-edit comparison is: 10K's 1-block 29/56w output vs 10L's 1-block 29/56w output — identical. The mechanism's output shape is bounded by `diff_cleanupSemantic`'s decision, which collapses MiniMax's short-scattered-shared-runs into one wide bundle. The finding rules out the "missing post-processor" hypothesis for this transformation and pushes the narrowness lever upstream — either to the LLM's drafting style (10M proposal (a) below) or sideways to cleanup-pass choice (10M proposal (c) below).
+
+**Sprint 10M proposal** (keyed to Outcome C).
+
+(a) *Conservative-drafting prompting on MiniMax.* Sprint 10K's prompt plus one additional discipline line: "preserve original wording wherever it still reads correctly — change only what the transformation requires." Sprint 10J Plan-mode explicitly dropped this language to get the cleanest negative result; 10K kept it dropped to test CPM's scaffolding in isolation. 10M restores it as the primary intervention. If MiniMax produces a `new_text` that shares a longer verbatim run with the target (e.g., 20+ words), `diff_cleanupSemantic` will preserve that run as an EQUAL boundary, and 10L's post-processor (now a known-working substrate) will decompose into multiple narrower `ModifyText` edits. This is the smallest-change probe of whether the narrowness lever is upstream of the LLM's output — as the data now suggests.
+
+(b) *Same 10K prompt on a frontier model (Sonnet 4.6 or GPT-5.4).* One `OSCAR_LLM_REDLINE_EXECUTOR_*` env-var flip. Tests whether CPM's pattern is load-bearing on any model when paired with 10L's post-processor. 10I already showed Sonnet under executioner framing bundled harder than MiniMax (71-word w:ins); under CPM's full scaffold it may behave differently. If Sonnet or GPT-5.4 produces `new_text` with sufficient shared phrasing, the post-processor + frontier-drafting would finally produce lawyer-shape narrow OOXML. Distinguishes "frontier capability required" from "conservative-drafting prompting required regardless of tier".
+
+(c) *Cleanup-pass probe.* Keep 10K's prompt and 10L's substrate; swap `diff_cleanupSemantic` for `diff_cleanupEfficiency`, or no cleanup at all with downstream filtering (e.g., merge consecutive ≤2-token DELETE/INSERT pairs; emit longer EQUAL runs verbatim as anchor material). This isolates the cleanup-pass's contribution from the drafting-style contribution. Low cost (one library-call swap); directly testable.
+
+(d) *Accept frontier-drafting + CPM-mechanism as the production shape.* If (a) fails (MiniMax's drafting doesn't shift under conservation guidance) and (b) succeeds (frontier produces narrow shapes via the same mechanism), architect around that split: a frontier executor on drafting, MiniMax reserved for apply/review stages that don't require decomposition judgement. Same as 10K proposal (d); 10L strengthens it by eliminating (e) — "CPM's Adeu-surface is sufficient" — as a viable option.
+
+Arturs's call between (a), (b), (c), (d). Recommendation: (a) first (cheapest, tests the drafting hypothesis 10L's finding suggests), then (c) (second-cheapest, tests the cleanup hypothesis 10L's diagnosis suggests), then (b) (model-tier probe after both drafting options exhausted).
+
+**Carry-forward notes.**
+
+(i) TODO item 9 updated: 10L Outcome C refines the read again — the find + diff mechanism, ported verbatim, does not narrow MiniMax's 10K output. The "missing post-processor" framing is closed. The cleanup-pass behavioural dependency is a new finding worth probing separately from the drafting-style lever.
+
+(ii) New cross-sprint data point for the `[Redline]` catalogue: **`diff_cleanupSemantic` is the load-bearing collapse step in CPM's pipeline.** On Opus-style diffs (long preserved phrasing runs), it preserves them → narrow output. On MiniMax-style diffs (short scattered shared runs), it collapses them → wide output. CPM's SKILL.md does not disclose this dependency. Future CPM-pattern ports should treat the cleanup pass as a tunable parameter, not a safe default. Adds to 10K's asymmetric-transfer observation (commenting rule transferred; Step D1 span-size rule did not) the further dimension: the mechanism's post-LLM cleanup is itself a tuning surface.
+
+(iii) The CLAUDE.md §"Cross-Version Porting Research" rule is vindicated and may warrant a broadening. The rule currently reads as a library-version-compatibility check. 10L's experience suggests reading it as: "any behavioural dependency that affects output shape is a port parameter, including cleanup heuristics, tokenisers, and optimiser passes in the porting source." The rule-text may want tightening to cover that scope. Not done in this sprint; flagged for a future governance pass.
+
+(iv) The post-processor's anchor-widening logic is correct and ready for future use but was untriggered on 10K's single-edit input. First sprint producing multi-block output will exercise it; until then, treat it as theoretical rather than proven.
+
+(v) Arturs's standing review items (Word review of 10E output; `adeu-lawyer-shape-criteria.md` sign-off; 10F/10G feature-branch merge decisions; 10C's four open questions) — still outstanding. 10L adds: no net new Word-review item — opening 10L's `nda-output.docx` in Word would show the same one-edit shape as 10K's output; any Word review done on 10K covers 10L too.
+
+**Expected friction observed.**
+
+| # | Friction anticipated in plan | What actually happened |
+|---|---|---|
+| 1 | `find_match_three_layer` returns -1 for some reason | Did NOT happen — matched cleanly on first layer (exact `DocumentMapper.find_match_index`). |
+| 2 | Anchor-widening produces target colliding with another document region | Did NOT happen — block's raw target was unique in the document on first check. |
+| 3 | Block-grouping produces an unexpected number of blocks | Did NOT happen (adversely) — produced 1 block as the diff had only 2 ops. The expectation was 2 blocks; the actual 1 is the Outcome C finding. |
+| 4 | `ModifyText`'s `new_text` contains newlines | Did NOT happen — 10K's new_text had no newlines, unchanged. |
+| 5 | `process_batch` sorts edits and an overlapping target fails to match | Did NOT happen — single edit, no ordering ambiguity. |
+| 6 | `diff_match_patch`'s output on 10K's strings doesn't find the shared substring cleanly | **This happened.** `diff_cleanupSemantic` collapsed the shared substring. Surfaced as the Outcome-C diagnosis. No in-sprint mitigation per iteration budget; reported as-is. |
+
+**Next sprint picks up from:** (a) the feature branch `sprint-10L-document-vs-new-diff` with the complete port + artefacts (post-processor is reusable infrastructure if 10M confirms the drafting-style lever); (b) the cleanup-pass diagnosis (10M (c) is a low-cost direct test); (c) the refined architectural choice between 10M (a) / (b) / (c) / (d) — Arturs's call which to run next.
+
+**No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged — `diff-match-patch==20241021` already pinned from 10J. No env-var triples changed (no LLM invoked).
+
+
