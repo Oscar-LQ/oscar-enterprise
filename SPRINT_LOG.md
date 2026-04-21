@@ -2110,4 +2110,152 @@ Span widths: w:ins=54 words (>50, OVER-BROAD), w:del=29 words (>20, SUSPICIOUS).
 
 **No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged. Empty `src/cosec/experiments/.gitkeep` added.
 
+### Sprint 10K — [Redline] — 2026-04-21 — Port Claude-Plugin-MCP's first-pass pattern to MiniMax (faithful port test)
+
+**Goal.** Test whether a faithful port of Claude-Plugin-MCP's (CPM) first-pass redlining pattern produces lawyer-shape output on MiniMax. Sprint 10J reported Outcome B and framed it as "bundling moved upstream from decomposition to drafting". Arturs's read: 10J's pipeline was not actually a port of CPM — it was a different pipeline (LLM drafts target prose → document-level diff → apply), while CPM is (LLM produces edit list → per-edit diff → apply). Sprint 10K corrects that gap. Same NDA, same transformation (§9 litigation → binding LCIA arbitration with five elements), for direct comparability with 10F / 10G / 10H-control / 10I-MiniMax / 10I-Sonnet / 10J.
+
+**Pre-implementation research note on main.** `docs/redline/research/sprint-10k-claude-plugin-mcp-port.md`. Records verbatim extracts from CPM (PERSONA.md, AUTHORITY.md, SKILL.md Step D1 with worked examples), CPM orchestration trace, edit contract, 10J↔CPM divergence analysis, and the CPM↔Adeu version-gap analysis (per new CLAUDE.md §"Cross-Version Porting Research"). Finding A from the version check: Adeu v0.9.0 renamed `DocumentEdit` → `ModifyText` as part of the unified `DocumentChange` API; field names (`target_text`, `new_text`, `comment`) and batch-API surface (`validate_edits`, `process_batch`) are unchanged. One-line Python-side translation; LLM-visible contract identical.
+
+**What was built.** Feature branch `sprint-10k-claude-plugin-mcp-port`. `src/redline/experiments/sprint-10k/` with three files: `build_input.py` (verbatim copy of 10E's — same NDA), `pipeline.py` (prompt assembly + single LLM call + JSON parse + `ModifyText` mapping + `RedlineEngine.process_batch` + `verify_output`), `run.py` (thin entry point). No Deep Agents, no `@tool` wrappers, no sub-agents — mirrors CPM's first-pass architecture. Artefacts captured: `llm-input.txt` (full system + human messages verbatim), `llm-output.txt` (MiniMax's raw reply verbatim), `parsed-edits.json`, `adeu-calls.jsonl`, `nda-input.docx`, `nda-output.docx`, `transcript.txt`. All on the feature branch.
+
+**System prompt structure** (assembled in `pipeline.py:build_system_prompt`, persisted to `llm-input.txt` at run time; total 14,470 chars / 342 lines):
+
+1. Persona — `defaults/PERSONA.md` (29 lines, verbatim)
+2. Authority framework — `defaults/AUTHORITY.md` (53 lines, verbatim)
+3. Step 6 commenting rules — `SKILL.md` 330–420 (91 lines, verbatim)
+4. First-pass redlining workflow — `SKILL.md` 606–713 (108 lines, verbatim) — Steps A–F including Step D1's WRONG/RIGHT worked examples
+5. Substrate note (5 lines, only block departing from CPM verbatim) — replaces Step F's reference to the `redline_document` MCP tool with "return edit list as JSON; caller applies via Adeu"
+6. User instructions — task description + Red-Zone pre-authorisation (the client's GC has authorised this specific dispute-resolution change)
+7. Output format — JSON schema `{"edits": [{target_text, new_text, comment}]}`
+
+HumanMessage: full NDA clean text (title + preamble + clauses 1–10 + signatures; 5,441 chars / 46 lines), mirroring CPM's Step B ("Read the full contract clause by clause").
+
+**Model**: `OSCAR_LLM_REDLINE_EXECUTOR_*` triple pointing to `minimax` / `MiniMax-M2.7` — unchanged from 10H/10I/10J. No new env vars.
+
+**Verbatim MiniMax response** (entire AIMessage content, 11 lines, wrapped in a ```json fence which the pipeline's single deterministic fence-strip handled cleanly):
+
+```json
+{
+  "edits": [
+    {
+      "target_text": "The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+      "new_text": "Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.",
+      "comment": null
+    }
+  ]
+}
+```
+
+No prose before or after, no `<think>` wrapping, clean structured output under instruction. MiniMax did NOT acknowledge the Red-Zone classification or the pre-authorisation — the reply is the edit list, nothing else. The Authority Check step (C) was silently absorbed.
+
+**Parsed edit list**: one edit. `target_text` = 29 words, `new_text` = 56 words, `comment` = null.
+
+**Verbatim Adeu call** (sole edit, pre-apply, from `adeu-calls.jsonl`):
+
+```
+ModifyText(
+  target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.',
+  new_text='Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.',
+)
+```
+
+`RedlineEngine.process_batch` returned `{edits_applied: 1, edits_skipped: 0}`. No `BatchValidationError`.
+
+**verify_output.**
+
+- `exists`: 40,252 bytes, 21-part zip (CommentsManager's eager four parts present even though no comments were produced).
+- `tracked changes`: `w:ins=1, w:del=1`.
+- **`WARN: w:ins[id=2] span=56 words — >50, almost certainly over-broad (lawyer-shape fail)`.**
+- **`WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)`.**
+- Empty-delText nested-delete: not present.
+- Duplicate w:ins: not present.
+- `SPOT-CHECK OK`: litigation phrase preserved in `w:delText`.
+
+**Clean-view §9 (Accept-All simulated).**
+
+> 9. Governing Law and Dispute Resolution
+>
+> This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties.
+
+Governing-law sentence intact. All five LCIA elements present: `LCIA Rules` ✓, `seated in London` ✓, `a sole arbitrator` ✓, `in the English language` ✓, `final and binding on the parties` ✓.
+
+**Seven-sprint comparison table** (all rows: same NDA, same litigation→arbitration transformation).
+
+| Framing / substrate | Edit count | w:ins widths | w:del widths | modify / insert | Five elements | Audit trail clean | Comments emitted |
+|---|---|---|---|---|---|---|---|
+| 10F — document-single-agent, MiniMax | 2 (1 substantive + 1 no-op) | 33 words | 12 words | 2 / 0 | yes | yes | 0 |
+| 10G — plan-first, MiniMax | 1 | 41 words | 29 words | 1 / 0 | yes | yes | 0 |
+| 10H control — handed-spans, MiniMax | 3 | 6, 30 words | 11 words | 1 / 2 | yes | yes | 0 |
+| 10I primary — executioner, MiniMax | 0 | — | — | 0 / 0 | no (no edits) | n/a | 0 |
+| 10I Sonnet reference — executioner, Sonnet | 1 | 71 words | 29 words | 1 / 0 | yes | yes | 1 |
+| 10J — deterministic pipeline, MiniMax drafts + Python diff + Adeu apply | 1 | 54 words | 29 words | 1 / 0 | yes | yes | 0 |
+| **10K — CPM-port, MiniMax edit-list + Adeu apply** | **1** | **56 words** | **29 words** | **1 / 0** | **yes** | **yes** | **0** |
+
+Execution-shape reading: 10H control remains the only Outcome-A-class run (three narrow calls, 6/30/11-word widths). All other rows bundle into one (or zero) edit. 10K's 56-word `w:ins` is between 10J's 54 words and 10I-Sonnet's 71 — the bundled-rewrite arbitration sentence is in the same width band regardless of whether the model is Sonnet (executioner framing), MiniMax (10J drafting), or MiniMax (10K CPM full-scaffold).
+
+**Outcome: C.** Pattern does not transfer down-tier. MiniMax under CPM's full prompt scaffolding (persona + authority + Step 6 + Step A–F + Step D1 surgical discipline + WRONG/RIGHT worked examples + edit-list data contract) produced ONE edit spanning the entire dispute-resolution sentence. Step D1's explicit "keep target_text to 5-15 words" and "do not rewrite what you are not changing", along with its two pairs of WRONG/RIGHT worked examples on confidentiality clauses, did not change MiniMax's decomposition behaviour. The bundled edit applied cleanly through Adeu — this is not a mechanical or version-compatibility failure; it is a model-capability finding.
+
+**What this tells us about CPM's architecture.** The hypothesis under test was that CPM's architecture does more decomposition work than 10J's simplified version realised — specifically that the edit-list data contract + Step D1 surgical language + worked examples would force MiniMax to decompose before generating `new_text`. The result falsifies that hypothesis: MiniMax treated `target_text` as "the span I'm changing" and produced a sentence-wide span because it rewrote a sentence-wide substance. Changing the data contract from "draft prose" (10J) to "edit list" (10K) moved the decomposition opportunity but did not force decomposition — the model produced a one-entry edit list where each `{target_text, new_text}` pair is itself wide. **CPM's pattern working on Opus is not sufficient evidence that the pattern is load-bearing; frontier capability is doing more of the work than the pattern's scaffolding suggests.**
+
+**Red-Zone behaviour.** The Authority Framework classifies dispute-resolution changes as Red Zone ("escalate immediately"). The plan handled this by including a pre-authorisation sentence in the user instructions. MiniMax's reply did not reference the Red Zone, the authority framework, the pre-authorisation, or the classification step. It produced the edit list directly. Read one way: the pre-auth worked as intended (no escalation; proceed). Read another way: MiniMax did not exercise the Authority Check step at all — it went straight from "read the document" (Step B) to "build the edit list" (Step D), skipping Step C. Either reading is consistent with the observed reply. For a future sprint this is diagnosable via `reasoning_split=False` on the executor only (10G's technique) — not done here because the plan's iteration budget is one invocation.
+
+**Commenting behaviour.** Zero comments in the one edit (`comment: null`). Matches CPM's expected 0–3 first-pass volume for a 15-clause contract with a single-clause change. On that dimension the prompt transferred — MiniMax used `null` cleanly and did not over-comment. The prompt's commenting discipline **did** transfer; the decomposition discipline did NOT. This separation is informative: it suggests the problem isn't "MiniMax ignores the whole CPM prompt" but "MiniMax follows the easy rules (no comments) and can't execute the harder ones (narrow target_text when substance is wide)". Decomposition is a harder cognitive task than comment restraint.
+
+**Substrate behaviour.** Adeu 1.1.0 applied the single wide edit without issue — `validate_edits` returned empty, `process_batch` returned `{edits_applied: 1, edits_skipped: 0}`, `trim_common_context` narrowed nothing (original and replacement share only the preamble-to-sentence transition; no shared prefix/suffix internal to the two spans). The substrate worked as documented. **No `BatchValidationError` surfaced**, so the version-gap open question ("does Adeu 1.1.0's stricter validation reject things Adeu 0.7.x accepted?") remains untested from this run — the edit was one unambiguous whole-sentence match.
+
+**Surprises.**
+
+1. **Step D1's WRONG/RIGHT examples did not anchor MiniMax's decomposition behaviour.** The prompt contains two concrete WRONG/RIGHT pairs on confidentiality clauses showing 5-15 word target_text. MiniMax read them (or had them in context) and produced a ~29-word target_text anyway. Either the examples aren't close enough to the §9 transformation for MiniMax to pattern-match (they're about defined-term and proviso edits, not forum-swap + machinery-insertion), or MiniMax reads the examples but doesn't generalise. Prior sprints (10F, 10G, 10I) had no worked examples and still bundled; 10K with two worked examples still bundled. Worked examples alone are not the unlock.
+2. **Red-Zone handling was silent.** The Authority Framework is load-bearing in CPM's workflow — without the pre-authorisation, MiniMax could validly refuse to emit edits (escalate instead). With the pre-auth, it produced the edit but said nothing about the framework. We do not know whether the framework was consulted and silently cleared, or consulted-not-at-all. This asymmetry — commenting discipline visibly transferred (`comment: null`); authority-framework discipline invisible — is a data point about CPM-prompt transferability: different sub-disciplines transfer differently.
+3. **Clean structured-output response with no fence confusion.** The reply opened with ```json and closed with ``` — a single markdown-fenced JSON block. The pipeline's deterministic one-cleanup fence-strip handled it. No retry, no iteration, no parse failure. MiniMax's JSON-under-discipline remains stable across 10J (no fence) and 10K (with fence) — small operational data point.
+4. **Parsed `comment: null` came through as a JSON `null`, not a Python string "null".** `json.loads` produced `None`; the pipeline's `map_to_adeu` checked `e.get("comment")` truthy-ness and skipped the kwarg. Adeu's `ModifyText` defaults `comment` to `None` in its field default (line 41 of `adeu/models.py`). No special handling needed. Good data-contract alignment between CPM's JSON convention and Adeu's pydantic model.
+5. **MiniMax's §9 arbitration prose is materially longer than 10J's and Sonnet's 10I prose.** 10K's `new_text` is 56 words: "Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be determined by binding arbitration under the LCIA Rules, seated in London, before a sole arbitrator, in the English language, and the award shall be final and binding on the parties." 10J's was 54 words ("Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties."). 10I-Sonnet's was 71 words. 10K's wording **echoes the preamble prose** ("subject matter or formation (including non-contractual disputes or claims)") — the edit rewrote the sentence in a way that symmetrises it with the governing-law sentence. That's a stylistic choice MiniMax made; it reads lawyerly but makes the `new_text` wider than it needs to be.
+
+**Outcome judgement: C.** CPM's first-pass pattern does not transfer down-tier to MiniMax for this transformation. The edit-list data contract + rich surgical-discipline prompt + WRONG/RIGHT examples + persona + authority framework, all transferred verbatim with only substrate-forced adaptations, produced the same one-bundled-edit shape 10G / 10I-Sonnet / 10J produced under simpler prompts. Two readings survive the evidence:
+
+- **Reading 1 (frontier dependency).** CPM's pattern depends on Opus's implicit decomposition judgement; the explicit prompt language ("target the minimum changed span", worked examples) is scaffolding that helps frontier models but isn't load-bearing. On a weaker model, the scaffolding reads as guidance rather than binding instruction.
+- **Reading 2 (transformation-specific difficulty).** The §9 litigation→arbitration transformation is structurally harder to decompose than CPM's worked examples (defined-term edit, proviso addition). The target sentence and the target arbitration language share little prose; any edit pair that covers the substance ends up wide. Decomposition into the 10E shape (forum-phrase modify + machinery insert) requires pre-computing the decomposition, which neither the Step D1 rules nor the worked examples do for this specific transformation.
+
+Both readings are consistent with the data; they are not mutually exclusive. Reading 1 is the cleaner finding; Reading 2 is the narrower one. 10L considers both.
+
+**Sprint 10L proposal** (keyed to Outcome C).
+
+(a) *Structured-output binding as a mechanical fix candidate.* 10K's JSON came through cleanly after one fence-strip, so `response_format` binding (provider-side structured output) was not needed here — this is a note for future sprints. If a future CPM-port run hits malformed JSON beyond one fence-strip, the mechanical fix is `with_structured_output(schema=EditListModel, method="json_schema")` on the chat model, not prompt iteration. Sprint 9 found MiniMax's OpenAI-compat shim fails `json_schema` and auto-falls-back to `ToolStrategy` which works — same pattern would apply. Not a pre-test iteration; a post-Outcome-C recovery path.
+
+(b) *Element-by-element scaffolding on MiniMax.* The 10E shape (two hand-wired calls, one modify for forum, one insert for machinery) worked. Between 10E's hand-wiring and 10K's full CPM prompt, there's an intermediate: **prompt with a transformation-specific RIGHT example** — a worked example in the prompt showing this exact litigation→arbitration decomposition (not just confidentiality-clause examples generalised). This is outside "faithful port" but within "minimum intervention to unlock surgical spans on MiniMax". If 10L runs it and MiniMax produces 2-4 narrow edits, the finding is "CPM's generic examples are insufficient for transformations not in the example set; transformation-specific examples close the gap". If not, Reading 1 is confirmed.
+
+(c) *Same CPM prompt on a frontier model.* The remaining unresolved question is whether CPM's pattern is load-bearing on any model. 10K can be re-run with Sonnet 4.6 or GPT-5.4 via `OSCAR_LLM_REDLINE_EXECUTOR_*` env-var flip (one config change, same pipeline). If Sonnet produces 2-5 narrow edits under the same prompt, Reading 1 is confirmed and the gap is purely capability; if Sonnet also bundles, the Step D1 language is scaffolding for Opus specifically and the pattern needs more than what CPM's SKILL.md discloses.
+
+(d) *Accept CPM's pattern + Opus as the production shape.* If (b) and (c) both fail, the conclusion is that frontier capability is required for this stage — 10L would design the planner/executor architecture around an Opus-or-equivalent executor on the decomposition task, with MiniMax reserved for stages that don't require span-level decomposition judgement (e.g., applying pre-decomposed edit lists, surfacing review summaries, agreeing counterparty-side accepted changes).
+
+The decision between (b), (c), (d) is one Arturs's call — the data from 10E through 10K is now consistent enough to choose.
+
+**Carry-forward notes.**
+
+(i) TODO item 9 updated: 10K Outcome C refines the read — CPM's full-scaffold prompt does not unlock surgical spans on MiniMax for this transformation. The decomposition ceiling is below what explicit surgical discipline + worked examples + authority framework + persona can reach. Open question: is it below what ANY prompt can reach on a MiniMax-tier model, or below what CPM's prompt specifically can reach? (b) vs (c) in the 10L proposal distinguishes.
+
+(ii) New data point for the `[Redline]` catalogue: **prompt disciplines transfer asymmetrically**. CPM's commenting rule (0–3 comments per 15 clauses) transferred cleanly — MiniMax produced zero comments on one edit. CPM's Step D1 span-size rule did NOT transfer — the target was ~29 words. A future sprint investigating MiniMax's behavioural envelope could systematically map which CPM-prompt sections transfer and which don't. Not actionable yet, but a useful axis.
+
+(iii) Adeu 1.1.0's behavioural compatibility with CPM's edit shape is partially validated: one clean `ModifyText` applied without `BatchValidationError` on a ~29-word target + ~56-word `new_text`. Edge cases (multi-paragraph, non-unique, pure deletion) remain untested from this sprint's evidence. 10L should probe if it needs them.
+
+(iv) The run produced no commentary on the Red Zone or the authority framework in MiniMax's reply — see Surprise 2. `reasoning_split=False` local override on the executor (the 10G technique) would surface whether the Authority Check step (C) was consulted at reasoning layer or skipped. Not done here (single-invocation budget). Low-cost follow-up if the question becomes load-bearing.
+
+(v) Arturs's standing review items (Word review of 10E output; `adeu-lawyer-shape-criteria.md` sign-off; 10F/10G feature-branch merge decisions; 10C's four open questions) — still outstanding. 10K adds: open `src/redline/experiments/sprint-10k/nda-output.docx` for visual comparison with 10J's one-edit shape and 10E's two-edit shape.
+
+**Expected friction observed.**
+
+| # | Friction anticipated in plan | What actually happened |
+|---|---|---|
+| 1 | Malformed JSON beyond fence-strip | Did NOT happen — clean ```json-fenced response, single fence-strip succeeded. |
+| 2 | `BatchValidationError` on non-unique or multi-paragraph target | Did NOT happen — single unambiguous match; validation empty. |
+| 3 | MiniMax refuses to emit edits on Red-Zone classification | Did NOT happen — pre-auth worked (silently); edit emitted. |
+| 4 | Context budget overflow | Did NOT happen — 14.5K + 5.4K chars well within MiniMax-M2.7 window. |
+| 5 | Outcome A vs B vs C | **Outcome C**, bundling at edit-list level. Prompt-scaffolding density did not unlock surgical spans. |
+| 6 | MiniMax produces malformed edit dicts (missing required keys) | Did NOT happen — all three keys present on the one edit. |
+| 7 | Comments over-emitted (>3) | Did NOT happen — zero comments. CPM's commenting rule transferred. |
+
+**Next sprint picks up from:** (a) the feature branch `sprint-10k-claude-plugin-mcp-port` with complete code + artefacts; (b) the two-reading interpretation of the result (frontier-dependent pattern vs transformation-specific difficulty); (c) the choice between 10L (b), (c), and (d) in the proposal section — Arturs's call which one to test next.
+
+**No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged. `OSCAR_LLM_REDLINE_EXECUTOR_*` triple reused from 10H/10I/10J.
+
 
