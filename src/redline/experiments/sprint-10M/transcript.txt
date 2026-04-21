@@ -1,0 +1,42 @@
+
+=== Run minimax | provider=minimax | model=MiniMax-M2.7 | started 2026-04-21T17:12:55.370600+00:00 ===
+provider=minimax model=MiniMax-M2.7
+parse_method=direct
+edits_returned=1 | applied=1 | skipped=0
+reasoning_present=True | classifications_count=1
+verify_output:
+  exists: /sandbox/oscar-enterprise/src/redline/experiments/sprint-10M/nda-output-minimax.docx (39059 bytes)
+  valid zip with 17 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=2, w:del=1
+  WARN: w:ins[id=3] span=54 words — >50, almost certainly over-broad (lawyer-shape fail)
+  WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText.
+
+clean-view §9:
+9. Governing Law and Dispute Resolution
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales.
+9A. Dispute Resolution
+Any dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration conducted under the LCIA Rules. The seat of arbitration shall be London. There shall be a sole arbitrator. The language of the arbitration shall be English. The arbitral award shall be final and binding on the parties.
+
+finished=2026-04-21T17:13:14.683525+00:00 | elapsed_seconds=19.3
+
+=== Run gemini | provider=openrouter | model=google/gemini-2.5-flash | started 2026-04-21T17:14:12.134012+00:00 ===
+provider=openrouter model=google/gemini-2.5-flash
+parse_method=direct
+edits_returned=6 | applied=1 | skipped=5
+reasoning_present=True | classifications_count=7
+verify_output:
+  exists: /sandbox/oscar-enterprise/src/redline/experiments/sprint-10M/nda-output-gemini.docx (38999 bytes)
+  valid zip with 17 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=1, w:del=1
+  WARN: w:ins[id=2] span=29 words — >20, suspicious (review against criteria)
+  WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText.
+
+clean-view §9:
+9. Governing Law and Dispute Resolution
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration.
+
+finished=2026-04-21T17:14:19.587224+00:00 | elapsed_seconds=7.5

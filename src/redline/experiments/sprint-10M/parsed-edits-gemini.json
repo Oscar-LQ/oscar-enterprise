@@ -1,0 +1,44 @@
+[
+  {
+    "rule": "Disputes arising out of or in connection with this Agreement shall be resolved by binding arbitration, not by the courts",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+    "new_text": "Any dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration.",
+    "comment": "MISALIGNMENT: Playbook requires binding arbitration instead of court jurisdiction for dispute resolution."
+  },
+  {
+    "rule": "Arbitration shall be conducted under the LCIA Rules",
+    "edit_type": "GAP",
+    "target_text": "Any dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration.",
+    "new_text": "Any dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration in accordance with the LCIA Arbitration Rules.",
+    "comment": "GAP: Playbook requires arbitration under the LCIA Rules, which is missing from the contract."
+  },
+  {
+    "rule": "Seat of arbitration: London",
+    "edit_type": "GAP",
+    "target_text": "in accordance with the LCIA Arbitration Rules.",
+    "new_text": "in accordance with the LCIA Arbitration Rules. The seat of the arbitration shall be London.",
+    "comment": "GAP: Playbook requires the seat of arbitration to be London, which is missing from the contract."
+  },
+  {
+    "rule": "Sole arbitrator",
+    "edit_type": "GAP",
+    "target_text": "The seat of the arbitration shall be London.",
+    "new_text": "The seat of the arbitration shall be London. The tribunal shall consist of a sole arbitrator.",
+    "comment": "GAP: Playbook requires a sole arbitrator, which is missing from the contract."
+  },
+  {
+    "rule": "Language of arbitration: English",
+    "edit_type": "GAP",
+    "target_text": "The tribunal shall consist of a sole arbitrator.",
+    "new_text": "The tribunal shall consist of a sole arbitrator. The language of the arbitration shall be English.",
+    "comment": "GAP: Playbook requires the language of arbitration to be English, which is missing from the contract."
+  },
+  {
+    "rule": "The arbitral award shall be final and binding on the parties",
+    "edit_type": "GAP",
+    "target_text": "The language of the arbitration shall be English.",
+    "new_text": "The language of the arbitration shall be English. The arbitral award shall be final and binding on the Parties.",
+    "comment": "GAP: Playbook requires the arbitral award to be final and binding, which is missing from the contract."
+  }
+]

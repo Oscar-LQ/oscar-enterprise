@@ -1,0 +1,9 @@
+[
+  {
+    "rule": "DISPUTE RESOLUTION - All disputes shall be resolved by binding arbitration under LCIA Rules, seat London, sole arbitrator, English language, final and binding award, with governing law preserved as England and Wales",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+    "new_text": "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales.\n\n9A. Dispute Resolution\n\nAny dispute arising out of or in connection with this Agreement shall be resolved by binding arbitration conducted under the LCIA Rules. The seat of arbitration shall be London. There shall be a sole arbitrator. The language of the arbitration shall be English. The arbitral award shall be final and binding on the parties.",
+    "comment": "MISALIGNMENT: Clause 9 provided for court litigation; playbook requires binding LCIA arbitration with London seat, sole arbitrator, English language, and final binding award. Governing law preserved unchanged."
+  }
+]

@@ -1,0 +1,59 @@
+{
+  "parse_method": "direct",
+  "summary": "Modified the dispute resolution clause to replace court jurisdiction with binding arbitration under LCIA Rules, specifying London as the seat, a sole arbitrator, and English as the language, with the award being final and binding. The governing law provision remains unchanged as per playbook.",
+  "reasoning": {
+    "document_summary": "Mutual Non-Disclosure Agreement (NDA) between Acme Holdings Limited and Zenith Partners Limited for evaluating a potential commercial collaboration related to professional services. The agreement defines Confidential Information, sets confidentiality obligations, permitted disclosures, exclusions, term, return/destruction of information, limitation of liability, no license, governing law, and general provisions.",
+    "playbook_rules_found": 7,
+    "analysis": [
+      {
+        "rule": "Disputes arising out of or in connection with this Agreement shall be resolved by binding arbitration, not by the courts",
+        "contract_clause": "9. Governing Law and Dispute Resolution",
+        "status": "MISALIGNMENT",
+        "action": "Replaced court jurisdiction with arbitration clause.",
+        "explanation": "The contract specifies exclusive court jurisdiction, while the playbook requires binding arbitration."
+      },
+      {
+        "rule": "Arbitration shall be conducted under the LCIA Rules",
+        "contract_clause": "None — missing",
+        "status": "GAP",
+        "action": "Inserted specific arbitration rules.",
+        "explanation": "The contract does not mention specific arbitration rules, and the playbook requires LCIA Rules."
+      },
+      {
+        "rule": "Seat of arbitration: London",
+        "contract_clause": "None — missing",
+        "status": "GAP",
+        "action": "Inserted seat of arbitration.",
+        "explanation": "The contract does not specify the seat of arbitration, and the playbook requires London."
+      },
+      {
+        "rule": "Sole arbitrator",
+        "contract_clause": "None — missing",
+        "status": "GAP",
+        "action": "Inserted provision for a sole arbitrator.",
+        "explanation": "The contract does not specify the number of arbitrators, and the playbook requires a sole arbitrator."
+      },
+      {
+        "rule": "Language of arbitration: English",
+        "contract_clause": "None — missing",
+        "status": "GAP",
+        "action": "Inserted language of arbitration.",
+        "explanation": "The contract does not specify the language of arbitration, and the playbook requires English."
+      },
+      {
+        "rule": "The arbitral award shall be final and binding on the parties",
+        "contract_clause": "None — missing",
+        "status": "GAP",
+        "action": "Inserted provision for final and binding award.",
+        "explanation": "The contract does not state that the arbitral award shall be final and binding, which is a playbook requirement."
+      },
+      {
+        "rule": "The governing-law provision (laws of England and Wales) shall be preserved unchanged",
+        "contract_clause": "9. Governing Law and Dispute Resolution",
+        "status": "ADEQUATE",
+        "action": "No edit",
+        "explanation": "The contract already specifies governing law of England and Wales, which aligns with the playbook."
+      }
+    ]
+  }
+}
