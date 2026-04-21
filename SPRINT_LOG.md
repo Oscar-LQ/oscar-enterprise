@@ -1879,3 +1879,169 @@ Execution shape reading: 10H control is the only Outcome-A-class shape (three na
 
 **No new dependencies, no policy widenings, no env-var triple committed to `.env.example`.** `requirements.txt` unchanged. `OSCAR_LLM_REDLINE_EXECUTOR_SONNET_*` exists only at shell level for the diagnostic Sonnet run — no production allocation yet.
 
+### Sprint 10J — 2026-04-21 — Deterministic edit decomposition pipeline: does MiniMax drafts + Python word-diff + Adeu apply produce lawyer-shape output?
+
+**Goal.** Test a different architecture: the LLM drafts target clause text given current clause text, deterministic Python word-diffs current vs target, Adeu applies the resulting narrow edits. No LLM is asked to bundle or narrow. 10E–10I established that when an LLM owns the decomposition decision — at any scope, under any framing, across two model tiers — it bundles. 10J moves the decomposition out of the LLM's plate entirely. Same NDA, same §9 transformation (litigation → LCIA arbitration with five elements: seat London, LCIA Rules, sole arbitrator, English language, final and binding), for direct comparability across 10F / 10G / 10H-control / 10I-MiniMax / 10I-Sonnet / 10J.
+
+**What was built.** `src/experiments/sprint-10j/` on the feature branch. Three top-level Python modules (`build_input.py`, `pipeline.py`, `run.py`) — no agents, no Deep Agents usage, no `@tool` wrappers. `pipeline.py` exposes three stage functions composed in sequence.
+
+- **Stage 1 (draft).** Single `chat_model.invoke([SystemMessage, HumanMessage])` via `get_chat_model(env_prefix="OSCAR_LLM_REDLINE_EXECUTOR")` (existing triple from 10H; no new config). MiniMax-M2.7. SystemMessage names the five LCIA elements and specifies JSON output; HumanMessage is the verbatim §9 text. No narrow-edit / decomposition / surgical-span language in the prompt. No "preserve original wording" conservation language either — confirmed with Arturs at plan time that dropping conservation gave the cleanest hypothesis test (letting the substrate win or lose without prompt steering).
+- **Stage 2 (diff).** Pure Python. `diff-match-patch` v20241021 (already pinned in `requirements.txt`; no new dep). Word-level granularity via Unicode token encoding (regex `r"\S+|\s+"`, each unique token maps to a unique Unicode char from U+0100, diff runs on encoded streams, decoded back). `diff_cleanupSemanticLossless` only — deliberately not `diff_cleanupSemantic` (which merges adjacent ops across short equal gaps, recreating the wide-edit failure). Single-pass block-grouping with short-EQUAL absorption: EQUAL ops with < 2 content tokens sandwiched between non-equal ops stay in the block; longer EQUALs terminate the block. Each block emits one `ModifyText`. Uniqueness widening against the full document's clean-view plain text (max ±8 content tokens). Pure-insert blocks use a prefix-match anchor (tail 5 tokens of preceding EQUAL). Cross-edit coupling check (pure-insert anchor must not be a substring of another edit's target).
+- **Stage 3 (apply).** Direct `RedlineEngine.process_batch(edits)`. No `@tool` wrappers, no `make_redline_tools` factory (10E's agent-loop shape doesn't fit a deterministic batch). Pre-call `validate_edits` for a clean Outcome B boundary; post-call `process_batch`; `save_to_stream`; write bytes to `nda-output.docx`.
+
+Artefacts (all on feature branch): `draft-output.json` (raw LLM response, parsed JSON, normalised `replacement_text`, echo-integrity report), `diff-output.jsonl` (edits with schema markers), `tool-calls.jsonl` (pre-call intent + post-call result), `nda-input.docx`, `nda-output.docx`, `transcript.txt`.
+
+**Stage 1 system prompt (verbatim):**
+
+```
+You are a legal drafter. Your task is to draft a replacement clause.
+
+You will be given the verbatim text of Clause 9 of an NDA governed by the laws
+of England and Wales. The client wants the dispute-resolution mechanism
+changed from court litigation to binding LCIA arbitration with these five
+elements named explicitly:
+
+  (1) the seat of arbitration shall be London;
+  (2) the arbitration shall be conducted under the LCIA Rules;
+  (3) the tribunal shall consist of a sole arbitrator;
+  (4) the language of the arbitration shall be English;
+  (5) the award shall be final and binding on the parties.
+
+The governing-law sentence (first sentence of the clause) must remain in
+force; only the dispute-resolution mechanism changes.
+
+Output a single JSON object, nothing else:
+
+  {"current_text": "<the Clause 9 text you were given, echoed verbatim>",
+   "replacement_text": "<your drafted replacement Clause 9 text>"}
+
+Return only the JSON. No prose before or after. No markdown fences.
+```
+
+Human message: the verbatim §9 text, nothing else.
+
+**Stage 1 raw response (verbatim, entire AIMessage content):**
+
+```
+{"current_text":"This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.","replacement_text":"This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties."}
+```
+
+Parsed cleanly (no markdown fences to strip). `current_text` echo matched the prompt verbatim (echo-integrity check: PASS — zero character divergence). Unicode normalisation on `replacement_text` was a no-op (no smart quotes, no en-dashes, no NBSP in the output).
+
+**Stage 2 — raw diff-match-patch output** (after `diff_cleanupSemanticLossless`): 71 ops. First op is a 247-char EQUAL containing the entire shared preamble ("This Agreement and any dispute ... laws of England and Wales. "). Ops 1–70 are a highly fragmented alternation of 1–3-word DELs, INSs, and single-space/single-word EQs — the algorithm finds incidental token reuse ("of", "the", "or", "arising", "connection", "with", "this", "Agreement") between the original dispute-resolution sentence and the drafted arbitration sentence. No EQ op after op 0 carries more than 1 content token ("of", "the", "in"). The fragmentation is a function of the drafts sharing common words coincidentally despite being semantically different sentences.
+
+After single-pass block-grouping with short-EQUAL absorption (gap threshold < 2 content tokens, which absorbs every post-preamble EQ), the 71 ops resolve to **exactly one modify block** — the entire post-preamble region. No uniqueness widening needed (the block's target was already unique). No cross-edit coupling issues (only one edit).
+
+**Stage 2 edit list (verbatim from `diff-output.jsonl`):**
+
+```json
+{"kind": "modify", "target_text": "The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.", "new_text": "Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.", "anchor_tokens": 0, "left_context_widen": 0, "right_context_widen": 0, "target_words": 29, "new_text_words": 54}
+```
+
+**Stage 3 — Adeu call (verbatim, a single ModifyText, pre-call intent captured):**
+
+```
+ModifyText(
+  target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.',
+  new_text='Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.',
+)
+```
+
+`validate_edits` returned an empty error list (target unique, well-formed). `process_batch` returned `{"actions_applied": 0, "actions_skipped": 0, "edits_applied": 1, "edits_skipped": 0}`. Output `.docx` is 40,273 bytes, 21-part zip.
+
+**verify_output (mechanical + lawyer-shape).**
+
+- `exists`: 40,273 bytes.
+- `valid zip`: 21 parts.
+- `parseable document.xml`: yes.
+- `tracked changes`: `w:ins=1, w:del=1`.
+- **`WARN: w:ins[id=2] span=54 words — >50, almost certainly over-broad (lawyer-shape fail)`.**
+- **`WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)`.**
+- Empty-delText nested-delete: not present.
+- Duplicate w:ins: not present.
+- `SPOT-CHECK OK`: litigation phrase preserved in `w:delText`.
+
+**Clean-view §9 (Accept-All simulated):**
+
+> 9. Governing Law and Dispute Resolution
+>
+> This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.
+
+Governing-law sentence intact. All five arbitration elements present: "LCIA Rules", "seat of arbitration in London, England", "sole arbitrator", "the language of the arbitration English", "final and binding on the parties". (The 10J-specific element-check regex in `run.py` produced two false-negative WARNs because the pattern expected exact phrases like "language shall be English" — the draft's phrasing is equivalent but not identical; visual inspection of clean-view §9 confirms all five are present.)
+
+**Outcome: B.** Diagnosable single-stage failure. The failing stage, strictly, is Stage 1 (the drafter): MiniMax produced a coherent JSON response that parsed cleanly and applied through Stages 2 and 3 without incident, but the `replacement_text` is a **wholesale rewrite** of the dispute-resolution sentence, sharing only the unchanged preamble with the original. The word-diff substrate correctly identifies this as one logical modification block — by construction, there is only one edit to produce because the drafter changed the whole sentence in one pass. Stages 2 and 3 executed correctly given their inputs; the pipeline's mechanism is sound. What the pipeline didn't do was compensate for a drafting style that doesn't grain into narrow edits.
+
+Span widths: w:ins=54 words (>50, OVER-BROAD), w:del=29 words (>20, SUSPICIOUS). Better than 10I-Sonnet's 71-word w:ins but worse than 10E's hand-wired 6/30-word pair. Shape is the same as 10I-Sonnet's: one wide modify_text covering all five elements, no insert_text calls, audit trail clean, clean-view coherent.
+
+**Comparison table** (all rows: same NDA, same litigation→arbitration transformation):
+
+| Framing / substrate | Edit count | w:ins widths | w:del widths | modify / insert | Five elements | Audit trail clean |
+|---|---|---|---|---|---|---|
+| 10F — document-single-agent, MiniMax | 2 (1 substantive + 1 no-op) | 33 words | 12 words | 2 / 0 | yes | yes |
+| 10G — plan-first, MiniMax | 1 | 41 words | 29 words | 1 / 0 | yes | yes |
+| 10H control — handed-spans, MiniMax | 3 | 6, 30 words | 11 words | 1 / 2 | yes | yes |
+| 10I primary — executioner, MiniMax | 0 | — | — | 0 / 0 | no (no edits) | n/a |
+| 10I Sonnet reference — executioner, Sonnet | 1 | 71 words | 29 words | 1 / 0 | yes | yes |
+| **10J — deterministic pipeline, MiniMax drafts + Python diff + Adeu apply** | **1** | **54 words** | **29 words** | **1 / 0** | **yes** | **yes** |
+
+**What 10J shows vs. what it doesn't.**
+
+- **Substrate mechanically works.** Stage 1 parsed cleanly, Stage 2's diff + block-group + Adeu-compatible edit emission worked, Stage 3's `process_batch` applied atomically. No JSON-parse failure, no reconstruction mismatch, no uniqueness widening needed, no cross-edit coupling violation, no validation error. The diff-to-ModifyText bridge is sound.
+- **Shape didn't improve.** 10I-Sonnet produced a 71-word w:ins under executioner framing; 10J produced a 54-word w:ins via deterministic pipeline. 10J's improvement is partly because MiniMax's arbitration sentence is tighter than Sonnet's (54 vs 71 words of new text) — not because the pipeline decomposed. Both produce one bundled edit spanning the whole rewritten sentence.
+- **The bundling moved upstream.** In 10F/10G/10I, the LLM bundled at decomposition time. In 10J, the LLM bundled at drafting time — rewriting the entire dispute-resolution sentence in its own voice rather than keeping original wording for unchanged concepts. The diff algorithm can only narrow what the draft pair structurally permits; if old and new sentences share only incidental words, there's only one logical block.
+- **Decomposition ceiling re-characterised.** 10I's read ("decomposition ceiling is prompt-framing, not model-tier") is refined by 10J: **when not told to preserve wording, the model produces prose-level rewrites that don't grain into narrow edits.** The ceiling isn't decomposition per se — it's the natural output shape of a model asked to draft a new clause. Asking a model to produce target text is the same cognitive task whether framed as drafting or as editing; the output shape depends on whether the prompt asks for conservation.
+
+**Algorithmic comparison with Claude-Plugin-MCP** (per sprint-entry requirement).
+
+- **Edge cases CPM handles that 10J intentionally does not.** Multi-paragraph target spans (CPM delegates to Adeu's wholesale `apply_edits`; 10J errors out — §9 is single-paragraph). Pure-deletion / newlines-in-new-text (CPM delegates; 10J errors out). Reconstruction mismatch (CPM delegates; 10J errors out). Non-unique target via three-layer matcher — full / clean / PlainTextIndex (10J uses only `extract_text_from_stream(clean_view=True)` for uniqueness + narrow ±8-word widening). Formatting-marker echo `**bold**` / `_italic_` in draft (CPM strips via `strip_formatting_markers`; 10J assumes clean — NDA has no markdown). Tabs in `<w:t>` (CPM normalises; 10J does NFKC + smart-quote / dash / NBSP substitution on `replacement_text` only). Redundant clause-number echo (CPM strips; 10J assumes clean). AI-produced overlapping edits (CPM pre-filters; 10J's block-grouping is overlap-free by construction). Heavy-rewrite ratio flagging (CPM logs; 10J does not track). Self-re-edit on already-tracked regions (CPM handles in-place; 10J single-shot).
+- **What 10J adds that CPM does not.** Echo-integrity check on Stage 1 `current_text` (Stage 2 uses the prompted ground truth regardless of what the model echoes). Cross-edit anchor-substring coupling check (CPM's architecture applies one edit through full DOM surgery before starting the next, so the coupling shape doesn't arise). Explicit short-EQUAL absorption threshold (CPM uses `diff_cleanupSemantic`, which does this implicitly but with the cost of also widening larger blocks; 10J's threshold is tighter and more predictable).
+- **Read for 10K.** CPM's edge-case handling exists because a production pipeline encounters richer substrate variety (multi-paragraph edits, AI-produced markdown markers, auto-numbered clauses, real comments). 10J's minimal shape is sufficient for this test NDA's §9 — but ports into production work would need most of CPM's compensations. If Outcome A had been reached, 10K would port a subset; because Outcome B isolates the issue at Stage 1 (drafter output shape), 10K's focus is upstream of the diff bridge, not downstream.
+
+**Sub-agent-applicability assessment** (per brief — Arturs's continuation note). Can the Stage 2 output be packaged as discrete edits that a sub-agent could apply one at a time? **On this transformation, vacuously yes — there is only one edit, and any "packaged as discrete" property is trivial at cardinality 1.** The interesting case (multiple edits, discreteness property verified) was not exercised because Stage 1's draft produced a single-block diff. **When this is re-tested with a conservative draft that produces 3–5 blocks** (anticipated in 10K), the discrete-applicability property remains the correct target: each `ModifyText.target_text` is computed against the pre-edit document and is unique there; any one edit can be applied independently in the original document state. Adeu's `process_batch` applies indexed edits in reverse position order with `occupied_ranges` collision detection. The pure-insert coupling check (Stage 2g) protects against the one shape where batch-level application order matters (a pure-insert anchor that is a substring of a later modify target). **No evidence from 10J disconfirms the property**; empirical confirmation at cardinality > 1 is a 10K deliverable.
+
+**Surprises new to this sprint.**
+
+1. **Stage 1's echo-integrity check reported PASS — MiniMax echoed the 70-word current_text verbatim without paraphrase, smart-quote substitution, or whitespace drift.** The Plan-agent flagged echo-paraphrase as a failure mode to defend against (Stage 2 uses prompted ground truth regardless, so the check is defence-in-depth). But it's a useful data point on its own: MiniMax's JSON-inside-JSON escaping was precise across a 70-word input. Given the four distinct HOC-paraphrase hazards catalogued across 10D/10F/10G/10H, this data point matters — **a model that relays instruction text verbatim under structured-output discipline exists at this tier**. The failure mode is plausibly about the wrapping layer (HOC's free-form task call), not MiniMax itself.
+2. **diff-match-patch's `diff_cleanupSemanticLossless` produces extreme fragmentation on texts that are semantically different but share common function words.** 71 ops for a single-sentence rewrite. Block-grouping with short-EQUAL absorption (< 2 content tokens) resolves all 71 ops to one block for this draft pair. Had the draft preserved more of the original wording, the same algorithm would have produced multiple blocks cleanly. The algorithm's shape is driven by draft conservation, not by cleanup choice — `cleanupSemantic` (merges blocks across short equal gaps) and `cleanupSemanticLossless` (moves edits to word boundaries) produce the same one-block result for this input.
+3. **Dropping the conservation sentence was the right call for the experimental design but produced a single-block diff.** Confirmed with the Plan agent at plan time: any "preserve original wording" language in the prompt would steer the model toward narrower deltas, polluting the signal about what the substrate does without steering. The result is a clean negative: **the substrate, on its own, does not produce narrow edits from MiniMax's natural drafting style**. Useful. Orthogonal ten-word fix: a conservation sentence in Stage 1 would likely change the draft shape and the edit count. 10K tests this explicitly.
+4. **Adeu's 21-part zip + `edits_applied=1` confirms the batch API works as described** — `validate_edits` then `process_batch` then `save_to_stream`, in one call each, no mapper rebuild concerns, no overlap detection triggered. The plan's Stage 3 design was straightforward; Adeu's API is stable enough to build on without a wrapper layer.
+5. **The MiniMax draft is tighter prose than Sonnet's** on this transformation. 54-word arbitration sentence vs. 71-word. Sonnet's included "which Rules are deemed to be incorporated by reference into this clause" — a belt-and-braces phrase MiniMax omitted. Not directly a lawyer-shape signal (both are bundled) but a per-model draft-style observation worth keeping.
+
+**Outcome judgement (B, with sub-classification).** Outcome B — one stage fails diagnosably. The diagnosis locates the issue at Stage 1 (drafter output shape), not at Stage 2 (diff correctness) or Stage 3 (Adeu application). The pipeline's mechanical correctness is proved. The capability question it asked — "can the substrate produce lawyer-shape output without LLM decomposition?" — is answered conditionally: **the substrate can if the drafter produces a conservative rewrite; for this prompt, the drafter did not.**
+
+**Sprint 10K proposal (keyed to Outcome B finding).**
+
+(a) *Primary — Stage 1 prompt iteration with conservation discipline.* Add a single sentence to the Stage 1 prompt: "Preserve the original wording wherever it still reads correctly — change only what the transformation requires." Re-run. Same NDA, same transformation, same Stage 2 / Stage 3. Measure: does a conservation instruction produce a draft pair whose word-diff yields 2–5 narrow blocks at the granularity the pipeline was designed to handle? If yes → the pipeline + prompt combo produces lawyer-shape output; Outcome A for 10K; 10L integrates into agent architecture. If no (MiniMax ignores conservation guidance, as 10G's plan-first guidance was ignored) → the substrate does not rescue us from model decomposition behaviour at drafting stage either, and 10L considers whether to port CPM's richer bridge (including delegation-to-wholesale fallback) as a different substrate test, or whether to accept that narrow output requires element-level scaffolding.
+
+(b) *Secondary — diagnostic re-run with a frontier drafter.* If 10K (a) produces a conservative draft on MiniMax, the question "is conservation a model-tier behaviour or a prompt-interaction behaviour?" is open. Quick diagnostic: re-run 10K's prompt on GPT-5.4 or Sonnet through the same pipeline. One extra run via the existing env-var seam (a planner or Sonnet-reference triple already exists). Cheap to run, useful for the generalisation story.
+
+(c) *Tertiary — CPM delegation port for multi-paragraph robustness.* Standalone work if 10K (a) succeeds. 10J's Stage 2 errors out on multi-paragraph targets, pure-deletion, reconstruction mismatch; CPM delegates to Adeu's wholesale `apply_edits` in each case. Porting the delegation layer would let the pipeline handle transformations beyond the single-paragraph §9 shape. Worth doing only when a multi-transformation sprint actually needs it; 10K probably doesn't.
+
+**Carry-forward notes.**
+
+(i) TODO item 9 updated: 10J Outcome B — deterministic pipeline mechanically sound; decomposition ceiling re-characterised as "drafter output shape, not post-draft bridge"; Stage 1 conservation-discipline iteration is 10K's primary question. LLM+CODE executor remains the live candidate architecturally; the open question is Stage 1's prompt shape, not Stage 2's bridge or Stage 3's application.
+
+(ii) Echo-integrity on JSON-wrapped verbatim relay is a new data point against TODO item 8's HOC paraphrase hazard. Not a fix — HOC operates in a different loop (`task`-tool relay, not `chat_model.invoke` with structured-output discipline) — but suggests the remediation path for HOC is not "teach the model to relay verbatim" (the tier already can) but "route around the loop that paraphrases" (JSON envelope at the specialist-output boundary, or Python orchestrating the relay).
+
+(iii) `diff-match-patch` is pinned and proven mechanically in-project. First substantive use of the pin. No new ADR needed — the library choice was made at plan time with Arturs, with CPM as prior-art evidence; no decision surface was new.
+
+(iv) No new ADRs. The pipeline shape is now empirically characterised but not yet architecturally committed; 10K's outcome determines whether this substrate becomes a production path or a documented-not-adopted experiment. ADR at the moment an architectural commitment lands.
+
+(v) Arturs's standing review items (Word review of 10E output; `adeu-lawyer-shape-criteria.md` sign-off; 10F/10G feature-branch merge decisions; the four 10C open questions) — still outstanding. 10J adds its own Word review item: open `src/experiments/sprint-10j/nda-output.docx` to visually compare the one-edit shape with 10E's two-edit shape and 10I-Sonnet's one-edit shape.
+
+**Expected friction observed.**
+
+| # | Friction anticipated in plan | What actually happened |
+|---|---|---|
+| 1 | Stage 1 JSON wraps in markdown fences or adds narration | Did NOT happen — clean `{"current_text":..., "replacement_text":...}` response, no fences, no prose. |
+| 2 | MiniMax paraphrases on echo (echo-integrity fires) | Did NOT happen — verbatim echo, zero divergence. |
+| 3 | Stage 2 reconstruction mismatch | Did NOT happen — reconstruction verified. |
+| 4 | Stage 2 uniqueness widening exhausts (±8 tokens) and errors | Did NOT happen — single edit block, target was already unique. |
+| 5 | Stage 3 `validate_edits` rejects on ambiguous target | Did NOT happen — empty error list. |
+| 6 | Outcome A vs B vs C | **Outcome B**, with diagnosis at Stage 1 — anticipated. |
+| 7 | Draft produces 2–5 narrow blocks | Did NOT happen — draft produced one wholesale-rewrite block, resolving to one wide modify. |
+
+**Next sprint picks up from:** (a) the feature branch `sprint-10j-word-diff-pipeline` with complete code + artefacts; (b) the finding that pipeline mechanics are sound but drafter output shape determines the result — 10K tests whether conservation discipline in the Stage 1 prompt produces the narrow-block shape; (c) the Plan-agent-informed design decisions (echo-as-truth, Unicode normalisation, `diff_cleanupSemanticLossless`, short-EQUAL absorption, ±8-word uniqueness widening, discrete-edit property) recorded and empirically shakedown-tested — 10K inherits them without rework.
+
+**No new ADRs. No new dependencies. No policy widenings. No `.env.example` changes.** `requirements.txt` unchanged (`diff-match-patch==20241021` was already pinned). `OSCAR_LLM_REDLINE_EXECUTOR_*` triple reused from 10H.
+
