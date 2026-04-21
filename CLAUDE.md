@@ -32,6 +32,12 @@ If the repo doesn't answer the question, say so explicitly and propose a small e
 
 ---
 
+## Cross-Version Porting Research
+
+When a sprint involves porting a pattern from another codebase that depends on a third-party library, Phase 1 research must identify the version of that library the source codebase was written against, compare it to the version currently in use, and verify contract compatibility (method signatures, return shapes, documented behaviour, deprecations). Reading the source codebase's current code is not sufficient — its code reflects the dependency contract at the time it was written, not the current state of those dependencies. A pattern that compiles against the old contract and silently malfunctions against the new one is the shape of failure to defend against.
+
+---
+
 ## Multi-Track Discipline
 
 Oscar is developed across multiple parallel tracks. Current: **Redline** (10-series sprints) and **CoSec** (C-series). Infrastructure sprints spanning tracks use the **M-series**. The Sprint Index in `PROJECT.md` shows all three. Established by Sprint M1.
