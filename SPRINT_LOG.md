@@ -1698,3 +1698,184 @@ The old `OSCAR_LLM_REDLINE_SPECIALIST_*` triple remains in `.env.example` and `d
 
 (d) *Expand `_HocInvocationCapture` to all subagents* — small observability fix, independent of architectural direction. Worth landing as a housekeeping commit even if 10I goes a different way.
 
+### Sprint 10I — 2026-04-21 — Executioner-framing capability test: does clause-scoped single-agent framing unlock decomposition that document-scoped framing couldn't?
+
+**Goal — and a pivot from TODO.md item 42.** 10H anticipated 10I as "re-run Shape A with HOC's text-relay unreliability routed around". This sprint takes a different direction, as agreed with Arturs ahead of the run. The reframing: 10F/10G tested *document-level single-agent framing* ("take this document, work out the edits, apply them"); the architecture the earlier sprints were converging on actually requires *clause-level executioner framing* (planner decides at document level, executioners each handle one clause with a pre-decided instruction). That's a materially narrower scope than 10F/10G ever tested. Before designing the orchestration for it, answer the capability question: can MiniMax function as a clause-level executioner? If yes, an all-MiniMax pipeline (planner aside) is viable; if no, decomposition is a capability ceiling at any scope and 10J must explore a deterministic executor. The HOC-bypass question from TODO.md item 42 remains open but is deferred to the planner/executor architecture sprint, not this capability test.
+
+**What was built.** Single-agent directory at `src/experiments/sprint-10i/`. One MiniMax agent. Direct `agent.invoke()`. No GC, no HOC, no planner/executor split, no sub-agents declared — `create_deep_agent(subagents=[])`. Reused verbatim from 10E: `make_redline_tools`, `_apply_one_edit`, `_reset_output`, `_TOOL_CALL_CAPTURE`, `verify_output`, trace helpers, clean-view §9 read-back, structlog silencing, `sys.path` trick. Stripped: GC/HOC system prompts, accept-reject spec builder, nested agent construction, `_gc_task_subagent_names`. New `EXECUTIONER_SYSTEM_PROMPT` derived from 10E's disciplinary spine (OUTPUT DISCIPLINE / NO-RETRY / SURGICAL-SPAN / RULES FOR TARGET&ANCHOR / final-reply template) — 10E's "DECOMPOSITION FOR THIS TRANSFORMATION" section (which handed exact spans) replaced by executioner framing: scope-to-§9, pre-decided goal, count-and-shape decomposition guidance only (2-4 narrow edits). Deliberately no 10G "PLAN BEFORE YOU ACT" scaffolding, no 10E worked RIGHT example with prescribed target_text values, no WRONG example pattern-match block. An OPERATING DISCIPLINE line ("You do not delegate this work to a sub-agent. You perform the edits yourself by calling modify_text and insert_text directly.") pre-empted the known Deep Agents `task`-tool leak per plan-review with Arturs. Env-var triple reused from 10H: `OSCAR_LLM_REDLINE_EXECUTOR_{PROVIDER,MODEL,API_KEY}` (shell-level, already in `.env`).
+
+**Full EXECUTIONER_SYSTEM_PROMPT (verbatim, with `{output_path}` interpolated at build time):**
+
+```
+You are the clause-9 executioner on an NDA redline. A planner (separate agent, not you) has already decided that Clause 9 of this NDA must change from court litigation (exclusive jurisdiction of the courts of England and Wales) to LCIA arbitration, with these five elements: (1) seat London, (2) LCIA Rules, (3) a sole arbitrator, (4) English language, (5) final and binding.
+
+THE DECISION IS MADE.
+You are NOT deciding whether to make this change — that decision is already taken. You are NOT reasoning about which clause to touch, or about the document's overall structure. Your scope is Clause 9 only; do not edit any other clause and do not propose any other changes. Your job is to work out the narrow edits that realise the planner's decision and to apply them via the tools.
+
+THE INSTRUCTION.
+Clause 9 of the on-disk NDA currently reads (verbatim): "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement." Leave the governing-law sentence (first sentence, ending "...laws of England and Wales.") intact. Change the dispute-resolution sentence (second sentence) so that disputes are resolved by binding LCIA arbitration, with the five elements above.
+
+OUTPUT DISCIPLINE — READ THIS FIRST.
+Your ONLY way to change the document is by calling ``modify_text`` or ``insert_text``. You do NOT hand-edit OOXML. You do NOT produce the final .docx yourself. When you are finished, reply with ONE sentence naming the output path exactly as given below — no extra prose.
+The output file is: ``{output_path}``. After your final planned edit returns ``applied: edits_applied=1 edits_skipped=0``, reply exactly with: "Redline saved to {output_path}."
+
+NO-RETRY RULE.
+After each tool call, READ the return value. If it begins with ``applied: edits_applied=1 edits_skipped=0``, that edit is DONE. Do NOT call modify_text or insert_text on the same or overlapping text again. Do NOT "improve" or "re-verify" a successful edit. Re-targeting a region you already edited will nest a new redline inside your previous one, clear the original text from the audit trail, and produce a broken redline. Move on to the next planned call or stop.
+
+DECOMPOSITION DISCIPLINE.
+A complete target for this transformation takes 2-4 narrow edits: one ``modify_text`` to replace the forum-submission phrase ("the exclusive jurisdiction of the courts of England and Wales") with arbitration-rules language, plus one or more narrow ``insert_text`` calls to add the remaining arbitration-machinery elements (seat, language, arbitrator, finality) after the dispute-resolution sentence's closing punctuation. Do NOT bundle all five elements into one wide ``modify_text`` — that produces a 30+ word w:ins / 30+ word w:del pair with no shared prefix/suffix and no audit-trail narrowing. Do NOT fragment down to word-by-word edits. 2-4 compositional edits is the target.
+
+SURGICAL-SPAN RULE — CORE DISCIPLINE.
+Your ``target_text`` is a locator for the smallest slice of the document that actually changes. Target 5-15 words, only the phrase that differs, plus just enough anchor context for a unique match. Never use a whole sentence or paragraph as target_text when only part of it differs. Never rewrite what you are not changing.
+
+RULES FOR TARGET / ANCHOR TEXT (apply to both tools).
+  * MUST match the document exactly — case, punctuation, whitespace.
+  * MUST match exactly one span. Zero or multiple matches return ERROR; read it, adjust the target once, retry.
+  * Do NOT include CriticMarkup markers ({--...--}, {++...++}) in either field.
+  * Do NOT use markdown bold (**) or italic (_) in new_text.
+  * Do NOT pass ``comment`` on a pure deletion (new_text=""); Adeu drops it.
+
+OPERATING DISCIPLINE.
+You have no filesystem access of your own. Modifying the document happens ONLY through ``modify_text`` and ``insert_text``. Do NOT claim the file is missing, unreadable, or does not exist — you have no way to know. You do not delegate this work to a sub-agent. You perform the edits yourself by calling modify_text and insert_text directly. If a tool call returns ERROR, read the message and adjust the target ONCE, then retry. If it errors again, STOP and report the error in your final reply instead of the "Redline saved to..." line.
+
+TOOL CONTRACT.
+  * ``modify_text(target_text, new_text)`` — replaces an existing phrase (``target_text``) with ``new_text``. Deletion uses ``new_text=""``.
+  * ``insert_text(anchor_text, new_text)`` — inserts ``new_text`` immediately AFTER ``anchor_text``. Pick an anchor ending in punctuation (e.g. a full stop) for clean boundaries. Use the shortest anchor that is still unique in the document.
+
+Begin.
+```
+
+**INVOCATION_PROMPT (verbatim HumanMessage body):**
+
+```
+Your clause-9 executioner task on /sandbox/oscar-enterprise/src/experiments/sprint-10i/nda-input.docx is ready. Execute the edits on §9 per your instructions.
+```
+
+**MiniMax primary run — message trace.**
+
+```
+ 1. [HumanMessage] <INVOCATION_PROMPT above>
+ 2. [AIMessage tool_calls=read_file(['file_path'])]
+ 3. [ToolMessage name='read_file'] Error: File '/sandbox/oscar-enterprise/src/experiments/sprint-10i/nda-input.docx' not found
+ 4. [AIMessage tool_calls=ls(['path'])]
+ 5. [ToolMessage name='ls'] []
+ 6. [AIMessage tool_calls=ls(['path'])]
+ 7. [ToolMessage name='ls'] []
+ 8. [AIMessage tool_calls=ls(['path'])]
+ 9. [ToolMessage name='ls'] []
+10. [AIMessage tool_calls=glob(['pattern'])]
+11. [ToolMessage name='glob'] []
+12. [AIMessage] The file `/sandbox/.../nda-input.docx` was not found. All attempted paths return empty — the document does not exist on disk at the specified location. Execution blocked: **File not found.** Please verify the input path and re-submit.
+```
+
+**MiniMax primary — specialist tool calls (modify_text / insert_text): NONE.** Zero substantive tool calls. `tool-calls.jsonl` was never created (the `_record` closure only fires inside `modify_text`/`insert_text`).
+
+**MiniMax primary — verify_output:** output file is byte-identical to input (38,795 bytes, 17 parts — same "no work happened" signature 10H surprise 5 established). `w:ins=0, w:del=0`. The "litigation phrase not found in w:delText" warning fires (correctly — nothing was deleted).
+
+**MiniMax primary result is not A/B/C.** MiniMax never reached the decomposition stage. Its first move was `read_file` on the input path, which hit Deep Agents' `FilesystemMiddleware` — an unconditional tool-injection layer that exposes `ls`/`read_file`/`write_file`/`edit_file`/`glob`/`grep`/`execute` against a virtual `StateBackend` that does not see the real filesystem where Adeu operates (Adeu's tools close over a real `Path`, not an in-agent fs). `read_file` returned "not found" (substrate-correct from Deep Agents' POV). MiniMax then looped through `ls` three times and `glob` once, all returning empty, and concluded "File not found. Execution blocked." This is the 10F iteration-1 hallucinate-missing-file failure mode reproduced — despite a stronger OPERATING DISCIPLINE section than 10F iter 2 carried ("Do NOT claim the file is missing, unreadable, or does not exist"). TODO.md item 6 documented this: *"default Deep Agents filesystem tools (`ls`, `read_file`) contaminate restricted-tool specialists — OPERATING DISCIPLINE's 'no filesystem access' is prompt-level fiction"* — 10I made that prompt-level/framework-level gap concrete and blocking.
+
+**Why 10E/10F/10G/10H did not hit this same wall.** Those sprints invoked the redline specialist as a SubAgent under GC→HOC via Deep Agents' `task` tool. The sub-agent's HumanMessage was internally synthesised by `task` from HOC's instruction, not a user-level message naming an input path. MiniMax-as-subagent never saw "on <path>" in its inbound message, so "verify the file exists" wasn't the natural first move. In 10I at top level, the invocation prompt's "on /sandbox/.../nda-input.docx" cued verification — and the framework provided the verification tools against a virtual substrate. The failure is specific to (a) MiniMax's read-the-path-and-verify impulse + (b) top-level tool surface including filesystem primitives + (c) virtual/real fs mismatch. Any one of the three neutralised would unblock — sub-agent shape kills (a) and (b); middleware suppression kills (b); a different backend kills (c).
+
+**Sonnet reference run — decision to run.** After the MiniMax primary, Arturs proposed a sharper diagnostic: run Sonnet in the same position as MiniMax — same Deep Agents config, same `EXECUTIONER_SYSTEM_PROMPT`, same `INVOCATION_PROMPT`, same `subagents=[]`, same NDA, same transformation — swap only the model. Purpose: disentangle model-level vs framework-level failure. Is the filesystem-tool stumble something any model does under this harness (framework-level), or is it MiniMax instruction-following fragility a frontier model would ignore (model-level)? Sub-experiment directory `src/experiments/sprint-10i/sonnet-reference/`. Env-var triple at shell level only (`OSCAR_LLM_REDLINE_EXECUTOR_SONNET_*` — not added to `.env.example`; this is diagnostic, not production allocation). Sonnet via OpenRouter on `anthropic/claude-sonnet-4.6` using the OpenRouter key already in `.env` for the planner triple. One invocation, one attempt.
+
+**Sonnet reference — message trace.**
+
+```
+1. [HumanMessage] Your clause-9 executioner task on /sandbox/oscar-enterprise/src/experiments/sprint-10i/sonnet-reference/nda-input.docx is ready. Execute the edits on §9 per your instructions.
+2. [AIMessage tool_calls=modify_text(['target_text', 'new_text', 'comment'])]
+3. [ToolMessage name='modify_text'] applied: edits_applied=1 edits_skipped=0 — this region is now TRACKED; do NOT call modify_text or insert_text on overlapping text again. Move to the next planned call or stop.
+4. [AIMessage] Redline saved to /sandbox/oscar-enterprise/src/experiments/sprint-10i/sonnet-reference/nda-output.docx.
+```
+
+**Sonnet reference — specialist tool calls (verbatim).**
+
+```
+CALL 1: modify_text(
+  target_text='The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.',
+  new_text='Any dispute or claim arising out of or in connection with this Agreement shall be referred to and finally resolved by arbitration under the LCIA Rules, which Rules are deemed to be incorporated by reference into this clause. The seat of arbitration shall be London. The tribunal shall consist of a sole arbitrator. The language of the arbitration shall be English. The award shall be final and binding on the parties.',
+  comment='Replacing court jurisdiction with LCIA arbitration: seat London, LCIA Rules, sole arbitrator, English language, final and binding.',
+)
+```
+
+**Sonnet reference — verify_output.**
+
+- `exists`: 40,733 bytes, 21-part zip (vs. 17 for the zero-edit MiniMax primary — the 4 comments-related parts Adeu eagerly emits when any edit runs).
+- `tracked changes`: `w:ins=1, w:del=1`.
+- `WARN: w:ins[id=2] span=71 words — >50, almost certainly over-broad (lawyer-shape fail)`.
+- `WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)`.
+- `SPOT-CHECK OK`: litigation phrase preserved in `w:delText`.
+- Clean-view §9 reads coherently; governing-law sentence intact; all five arbitration elements present (LCIA Rules, seat London, sole arbitrator, English language, final and binding).
+
+**Sonnet reference result.** Sonnet ignored the framework filesystem tools cleanly — `modify_text` on first turn, no verification loop. Instruction-following on "operate only through the two named tools" was intact for Sonnet where MiniMax had stumbled. HOWEVER — Sonnet bundled the entire transformation into ONE wide `modify_text`. `w:ins` is 71 words (>50 — over-broad per verify_output criteria), `w:del` is 29 words (suspicious). All five elements packed into one monolithic insertion. Structurally valid OOXML, all elements present, reads coherently in clean view — but lawyer-shape fails on span width. **This is Outcome C on the plan's rubric** ("one wide edit covering multiple elements") — the 10F/10G bundling shape, just worse by span count (Sonnet bundled wider than either MiniMax run produced under plan-first or identification framing).
+
+**Joint outcome for Sprint 10I.** Two distinct findings from the two runs:
+
+- **MiniMax primary: Outcome D.** Capability untestable under this harness shape — the framework filesystem-tool leak blocks MiniMax at path-verification before decomposition. A known issue (TODO item 6) that prior sprints had not hit because the executor was always a sub-agent.
+- **Sonnet reference: Outcome C.** Framework tool leak not a Sonnet-level problem. But the executioner framing — which was the hypothesis under test — fails to unlock surgical-span decomposition at frontier tier. Sonnet bundled more aggressively than MiniMax ever did under document-framing.
+
+**Reading them together: the decomposition ceiling is not a MiniMax-specific capability gap.** Under this prompt (executioner framing with count-and-shape DECOMPOSITION DISCIPLINE guidance but no worked example, no plan-first structure, no hand-wired spans), frontier Sonnet bundles as hard as or harder than MiniMax did under document-framing. What 10F/10G identified as a MiniMax decomposition ceiling is better read as a **prompt-framing ceiling** — the executioner framing itself, without more explicit decomposition scaffolding (of the 10E hand-wired variety), does not produce surgical-span output on either model tier.
+
+**The all-MiniMax pipeline is off the table at clause-decomposition** — confirmed by 10I primary's result structure interpreted alongside Sonnet reference. Note that the MiniMax primary never decomposed at all, so strictly we have "Sonnet bundles under this framing → assume MiniMax would too". The symmetry is not proved, but the frontier result is strong evidence the framing doesn't unlock what we were hoping.
+
+**Comparison table** (across 10F, 10G, 10H-control, 10I-MiniMax, 10I-Sonnet — same NDA, same litigation→arbitration transformation, different framings and models):
+
+| Framing / model | Edit count | w:ins widths | w:del widths | modify_text / insert_text | Five elements present | Audit trail clean |
+|---|---|---|---|---|---|---|
+| 10F — document-single-agent, MiniMax | 2 (1 substantive + 1 degenerate no-op) | 33 words | 12 words | 2 / 0 | yes | yes |
+| 10G — plan-first, MiniMax | 1 | 41 words | 29 words | 1 / 0 | yes | yes |
+| 10H control — handed-spans, MiniMax | 3 | 6, 30 words | 11 words | 1 / 2 | yes | yes |
+| 10I primary — executioner, MiniMax | 0 | — | — | 0 / 0 | no (no edits) | n/a |
+| 10I Sonnet reference — executioner, Sonnet | 1 | 71 words | 29 words | 1 / 0 | yes | yes |
+
+Execution shape reading: 10H control is the only Outcome-A-class shape (three narrow calls, widths 6/30/11 — 30 is suspicious but the sentence insertion is irreducibly that long). Everything else is bundled-or-broken. The executioner framing moves Sonnet from "would have done document-single-agent roughly this way" to "does an even wider bundle now" — worse, not better. For MiniMax the executioner framing reveals a fresh failure mode that prior shapes had concealed.
+
+**Surprises new to this sprint (not in 10A–10H):**
+
+1. **Framework filesystem-tool leak blocks MiniMax at top-level; the same framework is tolerated by Sonnet with no behavioural change.** Under identical Deep Agents config (subagents=[], same middleware stack, same unconditional FilesystemMiddleware), MiniMax went `read_file` → `ls` ×3 → `glob` → "file not found" and stopped; Sonnet went `modify_text` directly and completed one edit. The failure is not structural — it is sensitive to the model's instruction-following under a path-referencing HumanMessage. Prior sprints' sub-agent shape hid this because sub-agents get their HumanMessage internally from the `task` tool, with no explicit path reference, so MiniMax wasn't cued to verify. **TODO item 6 is promoted to must-fix for any top-level MiniMax use; the "prompt-level fiction" caveat is concrete and blocking.**
+
+2. **Executioner framing, with 10E's discipline spine but no hand-wired decomposition, makes bundling WORSE on Sonnet than document-single-agent framing produced on MiniMax.** 10G's MiniMax run was `w:ins=41 words`; 10I Sonnet is `w:ins=71 words`. The count-and-shape DECOMPOSITION DISCIPLINE guidance ("2-4 narrow edits, one for forum phrase, one or more for additions, not one wide `modify_text`") did not prevent bundling. Sonnet read the discipline, produced a structurally compliant reply ("I will make N edits" is nowhere — Sonnet emitted exactly one edit and stopped), and skipped the narrow decomposition. **The falsifiable prediction we came in with — "frontier model ignores framework noise and produces surgical spans under clean framing" — is falsified on the second clause.** Frontier reads framework noise fine but still bundles.
+
+3. **"The decision is made" framing did not shift behaviour the way its phrasing promised.** The prompt explicitly said "you are not deciding whether to make this change — that decision is already taken" and "scope is Clause 9 only". Both models treated the instruction as "produce the target arbitration clause", which in each case was a single-sentence synthesis task. The framing-as-scope-reducer worked (neither model touched other clauses); the framing-as-decomposition-unlocker did not (both models' natural response to "produce the target arbitration clause" is to produce it, in one piece). The hypothesis that narrowing scope would unlock decomposition discipline is **not supported** by the evidence.
+
+4. **Sonnet's output is lawyer-coherent text at the clean-view layer but lawyer-wrong at the audit-trail layer.** Clean-view §9 reads fine, includes all five arbitration elements, governing-law sentence intact, no grammatical issues. A human reading Accept-All output would find nothing to complain about. The lawyer-shape failure is only visible to someone reading the w:del/w:ins spans in the raw view — the audit trail is a 71-word block insertion, not element-by-element composition. This matches 10D's original observation and reinforces: **mechanical validity and clean-view correctness are insufficient evidence for lawyer-shape acceptance**; span-width inspection is load-bearing.
+
+5. **The comments field on Sonnet's `modify_text` call works through Adeu cleanly** ("Replacing court jurisdiction with LCIA arbitration: seat London, LCIA Rules, sole arbitrator, English language, final and binding."). MiniMax has never voluntarily passed a comment in six sprints (10D/E/F/G/H/I primary). Small data point — Sonnet uses the comment mechanism; MiniMax doesn't bother. Not actionable yet, but a behavioural difference worth keeping in mind if the audit trail ever needs per-edit rationales visible in Word.
+
+**Outcome judgement (joint).** The sprint's framing question — "can MiniMax function as a clause-level executioner in this narrower scope?" — is partly answered and partly replaced by a sharper question. **Directly**: we do not have a clean decomposition result for MiniMax because MiniMax did not reach decomposition. **Indirectly, via Sonnet**: executioner framing does not unlock surgical-span decomposition at frontier tier either — Sonnet bundled wider than MiniMax did under any prior framing. The conclusion is that **count-and-shape decomposition guidance, without more explicit scaffolding (worked examples, hand-wired spans, or a separate planning stage that proposes specific target_text values), is not sufficient to produce 10E-shape output on either model**. This shifts the 10J design from "all-MiniMax executioner architecture" (no longer viable) toward Shape B (deterministic word-diff executor with an LLM planner upstream) — the path TODO item 9 flagged as reserved "if 10H fails" and which now becomes "10J's scope" given the joint 10H/10I evidence.
+
+**Relation to TODO.md item 42 (the proposed 10I).** TODO item 42 proposed 10I as a re-run of Shape A with HOC's text-relay routed around. This 10I took a different direction — single-agent executioner-framing capability test, no planner. The rationale (documented pre-plan with Arturs): the executioner-capability question was logically prior to the planner/executor architecture question — designing a planner + multiple executioners presupposes the executioners work. Testing that first in isolation was cheaper and more diagnostic than re-running 10H's planner/executor split with orchestration changes. The 10H HOC-bypass questions remain open but are no longer the critical path — Shape A's architectural viability is dependent on executioner viability, and 10I's Sonnet reference undercuts the executioner premise for the LLM-executor shape specifically. Mark TODO item 42 superseded by 10I's actual direction and the outcome; move the remaining HOC-bypass subquestions into item 8's scope where they naturally belong (HOC-output-envelope hardening is about HOC paraphrasing in general, not specifically the 10H planner-input hop).
+
+**Carry-forward notes.**
+
+(i) TODO item 6 (Deep Agents default filesystem tools contaminate restricted-tool specialists) is now blocking for top-level MiniMax. Any future MiniMax-at-top-level sprint must either suppress these tools via custom middleware, use a sub-agent shape, or drop MiniMax from that role. Promote priority.
+
+(ii) TODO item 9 amended: single-specialist-on-frontier is ruled out on bundling (new — Sonnet bundled); all-MiniMax clause-executioner is ruled out on bundling AND framework-tool-leak combined; LLM+CODE executor (Shape B) is the only remaining candidate in the design space. Trigger for Shape B work moves from "if 10I fails" to "immediate — 10J".
+
+(iii) TODO item 8 (HOC output-envelope hardening) absorbs the residual HOC-bypass questions from TODO item 42. TODO item 42 is now superseded; remove or mark done.
+
+(iv) New TODO: prompt-framing ceiling on LLM-executor decomposition is the ceiling, not model tier. Worked examples or hand-wired spans (the 10E crutch) remain the only reliable path to surgical output. This is the 10E scope boundary re-stated, now with evidence at the frontier tier and a clearer bound: count-and-shape guidance isn't sufficient, element-by-element scaffolding or a code executor is.
+
+(v) Arturs's standing review items (Word review of 10E output; `adeu-lawyer-shape-criteria.md` sign-off; 10F/10G feature-branch merge decisions; the four 10C open questions) — all still outstanding.
+
+**Expected friction observed.**
+
+| # | Friction anticipated in plan | What actually happened |
+|---|---|---|
+| 1 | MiniMax calls `task` despite "don't delegate" line | Did NOT happen (the prompt line worked). |
+| 2 | Model asks clarifying questions from sparse HumanMessage | Did NOT happen — both models went to tools directly. |
+| 3 | Output shape is A/B/C | Did NOT happen — MiniMax's output is D (not predicted); Sonnet's is C. |
+| 4 | Env-var triple missing at runtime | Did NOT happen — triples were in `.env` already. |
+| 5 | OPERATING DISCIPLINE's "no filesystem access" holds | **Bit hardest on MiniMax.** It was prompt-level fiction. Sonnet treated it as true; MiniMax reached for the actual injected tools anyway. The one-line difference is the entire MiniMax result. |
+
+**Next sprint picks up from:** (a) a feature-branch artefact pair (`sprint-10i-executioner-framing`) — MiniMax primary at `src/experiments/sprint-10i/` (outcome D; zero edits); Sonnet reference at `src/experiments/sprint-10i/sonnet-reference/` (outcome C; one wide edit, all five elements bundled, lawyer-shape fail on span widths); (b) the joint finding that decomposition ceiling is prompt-framing, not model-tier; (c) TODO items 6 and 9 promoted. Natural next directions:
+
+(a) *Sprint 10J — Shape B port.* Port the Claude-Plugin-MCP word-diff pipeline as a deterministic code executor underneath an LLM planner (frontier or specialist, to be decided; 10H's control-run evidence supports MiniMax-as-executor of a code-plan if the plan is the interface). The LLM proposes target phrase and new phrase at clause level; a code executor does the byte-diff and produces narrow `ModifyText` calls deterministically. This turns the decomposition ceiling from "LLM capability gap" to "compiler correctness" — a much easier problem. Scope includes choosing planner model, defining the plan data contract (borrow 10H's work here), and running on the same NDA / same transformation for direct comparison to 10I's shapes.
+
+(b) *Diagnostic detour — element-by-element scaffolded prompt on Sonnet*, before committing to Shape B. One extra prompt-engineering pass — add a 10E-style RIGHT example with hand-wired target/new for each element (like 10E did for MiniMax) and see whether Sonnet produces 4-5 narrow edits as MiniMax did in 10E. If yes, confirms the ceiling is scaffolding density rather than any model ceiling; Shape B becomes "cheaper than scaffolding" rather than "only option". If no, Shape B is confirmed as the compelling path. Small experiment (single run, same sub-experiment shape as Sonnet reference).
+
+(c) *TODO-6 mechanical fix pilot*. Independent of the capability question: build a minimal `_ToolExclusionMiddleware`-equivalent that strips FilesystemMiddleware's tools from top-level MiniMax. If successful, rerun 10I primary to see whether MiniMax under executioner framing at top level with bounded tools reaches decomposition — this would give us MiniMax's actual shape on the executioner framing (currently absent from the data). Small infrastructure investment, high diagnostic payoff.
+
+**No new ADRs.** The executioner-framing capability claim is falsified, not validated. No architectural commitments land. The plan's reservation of ADR 019-021 for Shape A success persists — they remain queued for the successor architecture.
+
+**No new dependencies, no policy widenings, no env-var triple committed to `.env.example`.** `requirements.txt` unchanged. `OSCAR_LLM_REDLINE_EXECUTOR_SONNET_*` exists only at shell level for the diagnostic Sonnet run — no production allocation yet.
+
