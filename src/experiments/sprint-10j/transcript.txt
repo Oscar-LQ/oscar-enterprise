@@ -1,0 +1,96 @@
+========================================================================
+Sprint 10J — deterministic edit decomposition pipeline
+========================================================================
+
+input:  /sandbox/oscar-enterprise/src/experiments/sprint-10j/nda-input.docx
+output: /sandbox/oscar-enterprise/src/experiments/sprint-10j/nda-output.docx
+
+------------------------------------------------------------------------
+STAGE 1 — Draft (MiniMax chat call)
+------------------------------------------------------------------------
+
+SYSTEM PROMPT (verbatim):
+You are a legal drafter. Your task is to draft a replacement clause.
+
+You will be given the verbatim text of Clause 9 of an NDA governed by the laws
+of England and Wales. The client wants the dispute-resolution mechanism
+changed from court litigation to binding LCIA arbitration with these five
+elements named explicitly:
+
+  (1) the seat of arbitration shall be London;
+  (2) the arbitration shall be conducted under the LCIA Rules;
+  (3) the tribunal shall consist of a sole arbitrator;
+  (4) the language of the arbitration shall be English;
+  (5) the award shall be final and binding on the parties.
+
+The governing-law sentence (first sentence of the clause) must remain in
+force; only the dispute-resolution mechanism changes.
+
+Output a single JSON object, nothing else:
+
+  {"current_text": "<the Clause 9 text you were given, echoed verbatim>",
+   "replacement_text": "<your drafted replacement Clause 9 text>"}
+
+Return only the JSON. No prose before or after. No markdown fences.
+
+HUMAN MESSAGE (verbatim §9 text):
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.
+
+wrote /sandbox/oscar-enterprise/src/experiments/sprint-10j/draft-output.json
+
+RAW LLM RESPONSE (verbatim):
+{"current_text":"This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.","replacement_text":"This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties."}
+
+echo matches prompt verbatim: True
+
+PARSED replacement_text (before Unicode normalisation):
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.
+
+NORMALISED replacement_text (fed into Stage 2):
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.
+
+------------------------------------------------------------------------
+STAGE 2 — Word-diff + block-group (pure Python)
+------------------------------------------------------------------------
+
+wrote /sandbox/oscar-enterprise/src/experiments/sprint-10j/diff-output.jsonl
+edit count: 1
+
+  Edit 1: modify
+    target_text (29 words): 'The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.'
+    new_text    (54 words): 'Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.'
+
+------------------------------------------------------------------------
+STAGE 3 — Apply (Adeu RedlineEngine.process_batch)
+------------------------------------------------------------------------
+
+wrote pre-call intent to /sandbox/oscar-enterprise/src/experiments/sprint-10j/tool-calls.jsonl
+wrote /sandbox/oscar-enterprise/src/experiments/sprint-10j/nda-output.docx (40273 bytes)
+process_batch result: {'actions_applied': 0, 'actions_skipped': 0, 'edits_applied': 1, 'edits_skipped': 0}
+
+------------------------------------------------------------------------
+VERIFICATION
+------------------------------------------------------------------------
+
+verify_output ok=True
+  exists: /sandbox/oscar-enterprise/src/experiments/sprint-10j/nda-output.docx (40273 bytes)
+  valid zip with 21 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=1, w:del=1
+  WARN: w:ins[id=2] span=54 words — >50, almost certainly over-broad (lawyer-shape fail)
+  WARN: w:del[id=1] span=29 words — >20, suspicious (review against criteria)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText (original text is in the audit trail).
+
+10J-shape WARN: only 1 edit(s); target 2-5 narrow edits. Bundling risk.
+ELEMENT MISSING: 'seat London' in clean-view §9
+ELEMENT FOUND: 'LCIA Rules' in clean-view §9
+ELEMENT FOUND: 'sole arbitrator' in clean-view §9
+ELEMENT MISSING: 'English language' in clean-view §9
+ELEMENT FOUND: 'final and binding' in clean-view §9
+GOV-LAW OK: 'governed by and construed in accordance with the laws of England and Wales' intact in clean-view §9.
+CLEAN-VIEW §9:
+9. Governing Law and Dispute Resolution
+
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be finally resolved by binding arbitration under the LCIA Rules, with the seat of arbitration in London, England, the tribunal consisting of a sole arbitrator, the language of the arbitration English, and the award shall be final and binding on the parties.
+
+##
