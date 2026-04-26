@@ -2682,7 +2682,23 @@ The .docx is on feature branch `sprint-10O-planner-executor` at `src/redline/exp
 
 (iv) **Arturs's standing review items** still outstanding from 10E/10K/10L/10M/10N plus the new substantive verdict on 10O's `nda-output.docx` (with explicit attention to the three specific gap closures named above).
 
-**Substantive verdict (Arturs's review of `nda-output.docx`):** TBD. *To be appended when received. Three gap closures to assess: clause 3 qualifier preservation, clause 7 catch-out preservation, cross-clause mutuality judgement.*
+**Substantive verdict (Arturs's review of `nda-output.docx`):** Production-acceptable, materially better than 10N. Three of four 10N gaps closed:
+
+- §3 need-to-know qualifier preserved when adding the group companies carve-out. Planner emitted explicit preserve list; executor honoured it. The group companies definition (parent / subsidiary / affiliate) is partner-quality drafting added unprompted.
+- §7 mandatory-law catch-out preserved alongside new fraud / wilful misconduct / confidentiality breach carve-outs. Both protections present in parallel rather than the substitution failure 10N produced. Drafting could be tightened (the "save that... save that..." structure could be reorganised into limbs) but the bones are right.
+- §4 connector handled cleanly with renumbering — original (d) became (e), new (d) inserted as independent development exclusion.
+
+One gap persisted in the same locations as 10N:
+
+- Cross-clause "mutual obligations throughout" not propagated to recitals or asymmetric Purpose definition. GPT-5.5 non-Pro didn't recognise the brief instruction as implying edits at multiple specific locations and didn't emit cross-clause instructions despite the planner prompt's explicit example calling out the mutual-obligations case.
+
+§9 LCIA continuous prose, all five elements present, governing law preserved. Comments still don't land in .docx — confirmed by Q1 caveat (inline-path bypasses Adeu delegation). Inline-path refactor for full comment integration remains 10P+ scope.
+
+Two-hypothesis frame:
+- (a) Planner-executor architecture closes per-clause preservation failures: confirmed.
+- (b) GPT-5.5 non-Pro sufficient for cross-document directives: failed.
+
+Forward pointer: 10P-prep tests architecture portability when the client side flips (Oscar acts for Zenith). 10P proper tests counterparty response (Oscar handles Zenith's redlined return) using 10P-prep's output as input. The cross-clause directive miss may become 10Q's tier-bump test on counterparty response if it surfaces materially in 10P.
 
 **No new ADRs.** No new dependencies (Adeu version pin unchanged from 10N). No policy widenings. `.env.example` documents the planner triple and the pricing tier choice.
 
