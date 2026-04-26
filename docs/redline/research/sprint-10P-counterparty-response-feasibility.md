@@ -328,3 +328,120 @@ The brief that follows this Phase 0 will need to settle:
 - **Two-hypothesis structure for the SPRINT_LOG entry:** what's being tested independently and how do outcomes A/B/C diagnose?
 
 These questions inform the brief; the brief is a separate exercise per Arturs's directive.
+
+---
+
+## §5 — Counter-propose primitive verification (Phase 0.5)
+
+Per Arturs's behavioural-rules update: **silent rejection is forbidden** (`RejectChange` is structurally excluded from the planner's decision schema; disagreement must be expressed as counter-proposal preserving the layered audit trail). Phase 0.5 verifies whether Adeu 1.3.3's existing primitives produce the layered visibility shape MCP's `counter_propose_helpers.py` was designed for, OR whether the MCP helpers must be ported.
+
+### Method
+
+Built a synthetic tracked-changed `.docx` with one paragraph and one counterparty-attributed insertion:
+
+```
+The cap on liability shall be [Counterparty Counsel inserted: "GBP 50,000"].
+```
+
+The counterparty's `w:ins` carries `w:author="Counterparty Counsel"` and `w:id="100"`. Acme's counter-position is "GBP 100,000". Acme runs as `author="Acme Counsel"`. Two compositions tested:
+
+- **Composition A** — `RejectChange(target_id="Chg:100", comment="Disagree with the cap level")` followed by `ModifyText(target_text="shall be ", new_text="shall be GBP 100,000", comment="Counter-propose GBP 100,000 instead")` in one `process_batch` call. Tests the *literal* reject-then-modify pattern §3 named.
+- **Composition B** — `ModifyText(target_text="GBP 50,000", new_text="GBP 100,000", comment="Counter-propose GBP 100,000")` alone, no `RejectChange`. Tests whether Adeu's word-diff path produces layered output when targeting text *inside* a counterparty's `w:ins`.
+
+Verification artefacts saved to this directory for Arturs to inspect in Word:
+- `sprint-10P-counter-propose-verification-input.docx` — synthetic input
+- `sprint-10P-counter-propose-verification-A-reject-plus-modify.docx` — Composition A output
+- `sprint-10P-counter-propose-verification-B-modify-only.docx` — Composition B output
+
+### Composition A result — total visibility loss
+
+`process_batch` returned `{"actions_applied": 1, "actions_skipped": 0, "edits_applied": 1, "edits_skipped": 0}`. Output XML (paragraph body):
+
+```xml
+<w:r><w:t>The cap on liability shall be </w:t></w:r>
+<w:ins w:id="101" w:author="Acme Counsel" w:date="...">
+  <w:r><w:t>GBP 100,000</w:t></w:r>
+</w:ins>
+<w:r><w:t>.</w:t></w:r>
+```
+
+The counterparty's `w:ins[author="Counterparty Counsel"]` is **gone entirely**. Search results from the inspection script:
+
+```
+output w:ins count: 1 | w:del count: 0
+  w:ins[id=101] author='Acme Counsel' content='GBP 100,000' nested_w:del=0
+all w:t text in output: 'The cap on liability shall be GBP 100,000.'
+all w:delText text in output: ''
+does 'GBP 50,000' appear ANYWHERE in output? False
+```
+
+A reviewer opening this in Word sees only "Acme Counsel inserted GBP 100,000". No record that the counterparty ever proposed GBP 50,000 — the audit trail of the counterparty's position is destroyed. **`RejectChange` literally removes the counterparty's tracked-change element from the document body** before `ModifyText` runs (`process_batch` semantics: actions before edits, with mapper rebuild between).
+
+This is the hard fail Arturs's behavioural rule 1 was screening for. Composition A cannot be used.
+
+### Composition B result — partial visibility, with attribution leakage
+
+`process_batch` returned `{"actions_applied": 0, "edits_applied": 1}`. Output XML (paragraph body, namespaces stripped for readability):
+
+```xml
+<w:r><w:t>The cap on liability shall be </w:t></w:r>
+<w:ins w:id="100" w:author="Counterparty Counsel" w:date="2026-04-26T...">
+  <w:r><w:t>GBP </w:t></w:r>
+</w:ins>
+<w:commentRangeStart w:id="1"/>
+<w:del w:id="101" w:author="Acme Counsel" w:date="...">
+  <w:r><w:delText>50,000</w:delText></w:r>
+</w:del>
+<w:ins w:id="102" w:author="Acme Counsel" w:date="...">
+  <w:r><w:t>100,000</w:t></w:r>
+</w:ins>
+<w:commentRangeEnd w:id="1"/>
+<w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="1"/></w:r>
+<w:r><w:t>.</w:t></w:r>
+```
+
+What Adeu's word-diff did:
+- `target_text="GBP 50,000"` matched inside the counterparty's `w:ins`
+- Word-diff identified "GBP " as common prefix (preserved); "50,000" as the differing tail
+- The "GBP " portion **stayed inside the counterparty's original `w:ins`** — attribution preserved
+- The "50,000" portion was **emitted as a fresh `w:del[author="Acme Counsel"]`** (containing `w:delText`) — counterparty attribution LOST
+- The replacement "100,000" was emitted as a fresh `w:ins[author="Acme Counsel"]` — correct
+- The Comment field on `ModifyText` produced a `commentRangeStart` / `commentRangeEnd` pair anchored around the del+ins region — comment visibility works
+
+A reviewer in Word sees:
+- Counterparty inserted "GBP " (preserved attribution)
+- Acme deleted "50,000" (← but the counterparty was the one who proposed "50,000" — Acme didn't *delete* it, Acme is *rejecting* it; the document misattributes the original authorship)
+- Acme inserted "100,000"
+
+**The visibility is partial: anywhere the counter-proposal happens to share words with the counterparty's text, those words keep counterparty attribution; anywhere it differs, the differing portion gets re-attributed to Acme.** For a clean word-swap this is mostly fine; for a substantive position swap (where the counterparty's full text differs from the client's full counter), most of the counterparty's authorship is lost in the resulting `w:delText` — which renders as Acme-attributed strikethrough, not as counterparty-attributed-then-struck-through.
+
+### MCP's layered shape for comparison
+
+What MCP's `counter_propose_insertion` (`src/negotiation/counter_propose_helpers.py:41`) would produce on the same input:
+
+```xml
+<w:r><w:t>The cap on liability shall be </w:t></w:r>
+<w:ins w:id="100" w:author="Counterparty Counsel" w:date="...">
+  <w:del w:id="N" w:author="Acme Counsel" w:date="...">
+    <w:r><w:delText>GBP 50,000</w:delText></w:r>
+  </w:del>
+</w:ins>
+<w:ins w:id="N+1" w:author="Acme Counsel" w:date="...">
+  <w:r><w:t>GBP 100,000</w:t></w:r>
+</w:ins>
+<w:r><w:t>.</w:t></w:r>
+```
+
+Reading: counterparty's `w:ins` wraps an Acme `w:del` containing the FULL counterparty-original "GBP 50,000". Word renders this as "Counterparty Counsel inserted ~~GBP 50,000~~" (struck through by Acme) followed by "Acme Counsel inserted GBP 100,000". Both authors present, full attribution preserved end-to-end.
+
+### Conclusion
+
+Per Arturs's verification rule (*"If layered visibility fails: port MCP's counter_propose_helpers.py (~190 LoC) into Oscar"*):
+
+**Layered visibility fails on both compositions tested. Port MCP's `counter_propose_helpers.py` into Oscar** for use as the executor's counter-propose primitive. The 10P brief should scope the port: ~190 LoC for the wholesale primitives (`counter_propose_insertion` + `counter_propose_deletion` + `get_max_revision_id` + `_create_tracked_change` + `_create_run_with_text` + `_convert_run_text_to_del_text`), plus optional ~150 LoC for the surgical word-diff variant if narrow within-clause counters are wanted. The wholesale primitives alone are sufficient for the behavioural-rule-1 requirement.
+
+The port adds another batch of "private OOXML manipulation" code to Oscar — same upgrade-brittleness flag as `pipeline.py` already carries against Adeu private surfaces (recorded in `sprint-10O/pipeline.py` docstring; flagged for 10P+ refactor). 10P's port would extend that flag. Both private-surface batches should eventually be refactored onto Adeu's public surface — but Adeu doesn't expose a counter-propose primitive today, so the refactor depends on Adeu adding one (an upstream feature request worth flagging in Adeu's GitHub if it isn't already).
+
+**Composition B is *not nothing.*** For pure word-swap counter-proposals (where counterparty's text and client's text share most tokens), Composition B preserves attribution on the shared tokens and only re-attributes the differing portion. If Arturs's review of `sprint-10P-counter-propose-verification-B-modify-only.docx` finds the partial-attribution shape acceptable for a meaningful subset of counter-proposals (and the 10P planner can route narrow word-swaps to ModifyText-only and substantive-position swaps to the ported MCP primitive), Composition B + Path A together produce a hybrid that minimises private-OOXML surface area while still delivering full layered visibility where it matters most.
+
+The brief should pick the architecture: pure Path A (port MCP, use it for all counter-proposals), or hybrid (port MCP for substantive position swaps, route narrow word-swaps through Composition B).
