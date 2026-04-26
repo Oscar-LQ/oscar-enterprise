@@ -2837,7 +2837,26 @@ Phase 3 should pick before expanding to the full 18-change fixture. (1) is the s
 
 (v) **Arturs's standing review items** outstanding from 10E/10K/10L/10M/10N/10O/10P-prep plus 10P's two questions: (1) is the planner's choice to counter-propose §1 (defending Acme's broad definition against Zenith's reasonable-understanding narrowing) the right legal call for an English-law NDA? (2) is the planner's choice to accept §6 rather than no_action defensible given the brief's "Don't over-mark" instruction?
 
-**Substantive verdict (Arturs's review of `nda-output-minimal.docx`):** TBD. *To be appended when received. Five questions to assess: (1) is the layered two-author redline shape on §3 (Zenith w:ins keeps "and its Affiliates, where Affiliates means entities controlling..."; Acme w:del strikes "and to its contractors and subcontractors") visually correct in Word's Reviewing Pane? (2) is the accept-with-comment composite on §6 (Zenith insertion accepted as plain text; Acme comment anchored to the paragraph) visually correct? (3) is Chg:1's counter_propose-skipped-at-apply observation a real gap requiring resolution before Phase 3, or acceptable for the cut-down? (4) is the planner's call to counter-propose §1 (defend Acme's broad definition) substantively right? (5) is the planner's call to accept §6 rather than no_action substantively right?*
+**Substantive verdict (Arturs's review of `nda-output-minimal.docx`):** **Production-acceptable on the two decisions that landed.** Architecture confirmed at mechanical AND cognitive layer. Three OOXML shapes now demonstrably working — Phase 1 surgical-with-shared-prefix; Phase 1 wholesale wrap; Phase 2 pure-narrowing nested-strike (new). Comments land in OOXML (Stage C path resolves 10N/10O caveat). Acme comments are partner-quality drafting, not placeholders. Hypothesis (a) confirmed; hypothesis (b) substantially confirmed at three-decision scale (full confirmation needs Phase 3's 18-change coherence test). Brief-prediction divergence (planner emitted 1 accept + 2 counter_propose vs the brief's anticipated 1/1/1) is a positive finding, not a negative one — the planner exercised independent judgement that produced a defensible different distribution. **§1 dead path is the one real issue**, addressed in Phase 3.0 (gate relaxation, see below).
+
+Question-by-question:
+- (1) §3 layered shape — visually correct in Word's Reviewing Pane.
+- (2) §6 accept-with-comment composite — visually correct.
+- (3) Chg:1 dead path — real issue requiring resolution before Phase 3. Resolved in Phase 3.0 via Option 1 (relax gate on deletion change_type).
+- (4) Planner's call to counter-propose §1 — substantively right (defending Acme's broad definition against Zenith's reasonable-understanding narrowing is a defensible English-law NDA position).
+- (5) Planner's call to accept §6 rather than no_action — substantively right (the backup carve-out is operationally reasonable and constrained by non-access, limited-purpose access, and continued confidentiality).
+
+**Phase 3.0 — gate fix landed on main as commit `67c48c2`.** Per Arturs's selection of Option 1 from the three candidate resolutions banked above. `counter_propose_inplace._counter_propose_single` now permits byte-identical replacement specifically on deletion `change_type`, with the docstring naming the rule-3 escape semantics: *"Gate refuses no-op edits on insertion paths (target_text == new_text indicates LLM produced a no-op, likely hallucination). On deletion paths, target_text == new_text expresses a meaningful position: Acme is restoring text Zenith deleted, which produces a layered shape (Zenith w:del + Acme w:ins of identical text). This is rule-3 escape behaviour and the gate permits it specifically on deletion change_type."* Smoke-tested against the cut-down Chg:1 with stub executor returning byte-identical `new_text`: counter_propose status=success, method=wholesale; Zenith w:del[id=6] preserved (Zenith authorship intact on the proposed deletion); Acme w:ins inserted adjacent with identical text "whether or not marked or described as confidential.". Restore shape produced as designed. Phase 3.1 (single attempt against the full 18-change fixture) follows.
+
+**Third OOXML shape banked from Phase 2.3.** Phase 2.3 surfaced a third valid counter-propose OOXML shape beyond Phase 1's two: pure-narrowing nested-strike. When Acme's counter is wholly subtractive (strike fragments inside Zenith's w:ins without adding new text), the dispatcher produces no sibling Acme w:ins. Shape is mechanically correct; reads in Word as Zenith proposed X+Y; Acme accepted X, struck Y. All three shapes are valid for different position types:
+
+| Shape | Surgical/Wholesale | Sibling Acme w:ins? | Use case |
+|---|---|---|---|
+| Surgical with shared prefix (Phase 1 Case 1) | Surgical | Yes — narrow new content | Narrow word-swap (e.g. "GBP 50,000" → "GBP 100,000") |
+| Wholesale wrap (Phase 1 Case 2/3) | Wholesale | Yes — full replacement | Substantive position swap with no shared tokens |
+| Pure-narrowing nested-strike (Phase 2.3 §3) | Surgical | No — Acme adds no new tokens | Acme strikes part of Zenith's broadening, keeps the rest |
+
+Phase 3 verify_output should accept the third shape on counter_propose decisions where the executor's `new_text` is a strict subset of `target_text`.
 
 **No new ADRs.** No new dependencies. No policy widenings. `.env.example` unchanged. `requirements.txt` unchanged from 10N's adeu==1.3.3 bump (folded into Phase 1's branch by commit `a6820e2`).
 
