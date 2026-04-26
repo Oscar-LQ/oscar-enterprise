@@ -457,7 +457,7 @@ network_policies:
       port: 443
     - host: wss-primary.slack.com
       port: 443
-    - host: "*.slack.com"
+    - host: "**.slack.com"
       port: 443
     - host: files.slack.com
       port: 443
