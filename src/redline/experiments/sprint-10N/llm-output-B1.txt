@@ -1,0 +1,24 @@
+{
+  "changes": [
+    {
+      "target_text": "Save for liability which cannot be limited or excluded by applicable law, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000).",
+      "new_text": "Save for liability which cannot be limited or excluded by applicable law, and further excluding liability for fraud, wilful misconduct, or breach of the confidentiality obligations in Clause 2 (which shall remain uncapped), the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000).",
+      "comment": "MISALIGNMENT: Cap must expressly carve out fraud, wilful misconduct, and breach of confidentiality obligations — these should be uncapped per Acme's instructions."
+    },
+    {
+      "target_text": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.",
+      "new_text": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so; or (e) is independently developed by the Receiving Party without reference to or use of any Confidential Information of the Disclosing Party.",
+      "comment": "GAP: Independent development exclusion not present — adding as required by Acme."
+    },
+    {
+      "target_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.",
+      "new_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, professional advisers, and its group companies (as defined in section 1159 of the Companies Act 2006) (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.",
+      "comment": "GAP: Group companies not included in permitted disclosures — adding as requested by Acme."
+    },
+    {
+      "target_text": "The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+      "new_text": "Any dispute or claim arising out of or in connection with this Agreement or its subject matter or formation (including non-contractual disputes or claims) shall be referred to and finally resolved by arbitration under the LCIA Rules, which Rules are deemed incorporated herein by reference. The seat of arbitration shall be London. The arbitral proceedings shall be conducted in the English language by a sole arbitrator appointed in accordance with the LCIA Rules. The award shall be final and binding on the parties.",
+      "comment": "MISALIGNMENT: Acme prefers LCIA arbitration over court litigation — changing jurisdiction clause to arbitration clause. Please confirm you are comfortable with sole arbitrator approach before we send."
+    }
+  ]
+}
