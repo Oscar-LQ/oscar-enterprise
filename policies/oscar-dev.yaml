@@ -8,6 +8,12 @@ filesystem_policy:
   - /dev/urandom
   - /app
   - /etc
+  # /etc/oscar/oscar.env carries OSCAR_* secrets and is bind-mounted into
+  # the sandbox by the host launcher (out-of-band from this policy — see
+  # ADR 025). /etc is already in the Landlock read-only allowlist above;
+  # the explicit entry below makes intent grep-able and survives any
+  # future narrowing of the /etc allowlist.
+  - /etc/oscar/oscar.env
   - /var/log
   read_write:
   - /sandbox
@@ -440,3 +446,33 @@ network_policies:
     - path: /usr/bin/wget
     - path: /sandbox/.vscode-server/**
     - path: /sandbox/.vscode-remote-containers/**
+  # ---- Sprint M2 channels ----
+  # Slack channel — slack-bolt Socket Mode (outbound WSS only; no public
+  # endpoint required from the sandbox). See docs/architecture/slack-app-
+  # manifest.md and ADR 024.
+  slack:
+    name: slack
+    endpoints:
+    - host: slack.com
+      port: 443
+    - host: wss-primary.slack.com
+      port: 443
+    - host: "*.slack.com"
+      port: 443
+    - host: files.slack.com
+      port: 443
+    binaries:
+    - path: /sandbox/.venv/bin/python
+    - path: /sandbox/.venv/bin/python3
+  # AgentMail channel — agentmail Python SDK (outbound WSS to ws.agentmail.to
+  # plus REST to api.agentmail.to). See ADR 024.
+  agentmail:
+    name: agentmail
+    endpoints:
+    - host: ws.agentmail.to
+      port: 443
+    - host: api.agentmail.to
+      port: 443
+    binaries:
+    - path: /sandbox/.venv/bin/python
+    - path: /sandbox/.venv/bin/python3
