@@ -57,6 +57,8 @@ Oscar is developed across multiple parallel tracks. Current: **Redline** (10-ser
 
 - **Surface output artefacts at sprint end.** Commit and push the produced `.docx` (and any other reviewable output) to the sprint's feature branch and include the GitHub download URLs in the SPRINT_LOG entry. The lawyer reviews the document, not the metrics — span counts, diff widths, and acceptance rates do not substitute for reading the actual redline.
 
+- **[Redline] [Infrastructure] Verify model routing against LangChain reply metadata, not env vars.** When a sprint result depends on which model served which call, verify against the LangChain reply's `response_metadata.model_name` (and `additional_kwargs` for upstream model strings via routing layers like OpenRouter), not against the env var or the assumed routing. The metadata capture helper at `src/shared/llm/metadata_capture.py` writes `llm-meta-{role}-{N}.json` alongside the `.content` output for every call — experiment harnesses must call it after each `chat_model.invoke()`. Sprints that don't capture metadata cannot make routing claims with API-envelope provenance; their routing assertions are indirect inference (output character + provider-routing tightness + transcript env values), which is sufficient for most purposes but not for any sprint where the routing question is itself the experimental variable. Established by Sprint 10O's verification audit; rule applies to the Redline track and to any cross-track sprint that exercises the chat-model seam.
+
 ---
 
 ## Architecture & Design
