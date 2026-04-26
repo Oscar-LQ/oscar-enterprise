@@ -2703,3 +2703,76 @@ Forward pointer: 10P-prep tests architecture portability when the client side fl
 **No new ADRs.** No new dependencies (Adeu version pin unchanged from 10N). No policy widenings. `.env.example` documents the planner triple and the pricing tier choice.
 
 **Next sprint picks up from:** (a) Arturs's substantive verdict on the .docx and the three-gap mapping; (b) if all gaps close: the planner-executor pattern is production-ready and 10P+ is the orchestrator-integration sprint; (c) if gaps 1+2 close but gap 3 was a real omission: 10P substitutes GPT-5.5 Pro for the capability-ceiling check; (d) if executor doesn't honour preserve lists: 10P instruments the executor or refactors the planner→executor handoff; (e) Q1 comment-fix and Adeu upgrade-brittleness still want the inline-path-onto-process_batch refactor sometime in 10P+.
+
+
+### Sprint 10P-prep — [Redline] — 2026-04-26 — Oscar acts for Zenith, first-pass redline on the same Acme NDA (counterparty fixture for 10P)
+
+**Goal.** Re-run the 10O planner-executor pipeline with the client side flipped: same NDA, same Adeu 1.3.3, same MiniMax executor and same GPT-5.5 non-Pro planner, but Oscar now acts for Zenith (the supplier of professional services, not the counterparty Acme) under a deliberately thinner brief that names no specific tactical positions. The output becomes the counterparty fixture that 10P proper consumes (Oscar handles Zenith's redlined return). 10P-prep is a sprint in its own right: a real test of architecture portability under a client-side flip, gated separately from 10P proper. Author attribution flips from "Oscar" (10O default) to "Zenith Counsel" so 10P can distinguish authorship cleanly in the layered-redline flow.
+
+**Two-hypothesis frame.**
+
+- **(a) Architecture portability when the client side flips.** Does the 10O pipeline (planner emits structured instructions with `preserve` lists; MiniMax executes one at a time; inline word-diff applies via Adeu) produce mechanically valid lawyer-shape output on a different client posture? A no would be a real finding — it would say 10O's substantive success was tied to Acme-side framing, not the architecture itself. (a) gates whether 10P proper can proceed at all (no fixture without 10P-prep clearing).
+- **(b) GPT-5.5 non-Pro under a deliberately thin brief.** Zenith's brief names zero tactical positions (cf. Acme's seven). The planner has to read the NDA, infer supplier-side concerns from first principles (liability exposure, scope of disclosure obligations, audit/inspection rights, return-of-information mechanics, governing-law/forum friendliness), decide which to flag, and apply the same `preserve`-list discipline as 10O. (b) is independent of (a) and is a finding about how Oscar handles unspecific briefs — not a gate for 10P.
+
+**Done.**
+
+*Phase 0 — brief approval.* Five-sentence Zenith brief approved by Arturs verbatim: *"Acme have sent us their standard NDA. We're the supplier of professional services. Standard supplier-side review — keep our exposure limited, don't accept obligations broader than what's reasonable for an NDA of this size, push back on anything that creates open-ended risk. Don't over-mark — most of this will be commercial. Comment if you need my input on anything."* Deliberately less prescriptive than Acme's brief.
+
+*Phase 1A — Adeu 1.3.3 author-propagation surface check.* Read `/sandbox/.venv/lib/python3.13/site-packages/adeu/redline/engine.py`: `RedlineEngine.__init__(doc_stream, author="Adeu AI")` at engine.py:37 stores `self.author` (line 50). `_create_track_change_tag(tag_name, author="")` at engine.py:131 emits `create_attribute(tag, "w:author", author or self.author)` at engine.py:134. 10O's `pipeline.py` calls `engine._create_track_change_tag("w:del")` / `("w:ins")` at three sites without passing an author argument — every emitted track-change therefore carries `self.author`. **Author propagates end-to-end.** No Adeu surface change required.
+
+*Phase 1B — implementation.* Feature branch `sprint-10P-prep-zenith-firstpass` off main. `src/redline/experiments/sprint-10P-prep/` with build_input.py / doc_analyser.py / executor_prompt.txt / planner_prompt.txt / prompt_builder.py / response_parser.py copied verbatim from 10O (md5 confirmed for build_input.py against the M1-relocated 10E version: `677c1fe4d58dbd4b71bb25be46a2ee81`); user_prompt.txt = Zenith's brief verbatim from Phase 0; pipeline.py with author swap on four sites (`prepare()` default + fallback engine + two Styler call-sites — last two only fire when `polish_formatting=True`); run.py with author swap at the prepare() call-site (line 262: `author="Oscar"` → `author="Zenith Counsel"`) and `[10O]` → `[10P-prep]` log prefix replace_all. planner_prompt.txt, executor_prompt.txt: untouched (LLM-bound text, verbatim discipline). Two `"Vibe Legal"` strings in module-header docstrings (pipeline.py:2, doc_analyser.py:2) intentionally retained as faithful upstream-port lineage attribution per 10M.
+
+*Phase 3 — single end-to-end run.* Planner: 11,169-char reply parsed at layer 1 (`direct`); produced **7 instructions + 4 cross_clause_notes** (cf. 10O's 4 + 4). Executor loop: 7 calls to MiniMax, all parsed at layer 1, all produced applicable edits. `pipeline.apply_edits`: **7 applied / 0 skipped**. `nda-output.docx` 39,873 bytes. Total elapsed 217.7s (planner ~30s; 7 executor calls ~26s mean; cf. 10O's 122.5s for 4 executors).
+
+**Outcome A (mechanical) / Substantive verdict: pending Arturs's review.**
+
+The .docx is on feature branch `sprint-10P-prep-zenith-firstpass` at `src/redline/experiments/sprint-10P-prep/nda-output.docx`. Direct download: `https://github.com/Oscar-LQ/oscar-enterprise/raw/sprint-10P-prep-zenith-firstpass/src/redline/experiments/sprint-10P-prep/nda-output.docx`.
+
+**Phase 2 — mechanical verification.**
+
+| Check | Result |
+|---|---|
+| File exists, valid zip, parseable | PASS — 17 parts (no `word/comments.xml` per Q1 inline-path constraint, expected) |
+| Tracked-change counts | `w:ins=12, w:del=6` |
+| **`w:author="Zenith Counsel"` on every w:ins/w:del (load-bearing addition for 10P-prep)** | **PASS — 12/12 w:ins and 6/6 w:del attributed to Zenith Counsel; zero misattributions** |
+| Nested w:del with empty w:delText | 0 (target=0) |
+| Duplicate w:ins (≥10w, ≥2 copies) | 0 (target=0) |
+| python-docx round-trip | PASS — Document opens cleanly, 25 paragraphs |
+| Planner metadata | `llm-meta-planner.json` present; `response_metadata.model_name = openai/gpt-5.5-20260423`; usage 2888 in / 4725 out (2588 reasoning) / 7613 total |
+| Executor metadata | 7 `llm-meta-executor-{NN}-p{N}.json` files; `model_name=MiniMax-M2.7` on all seven |
+| 1:1 instruction-to-edit | PASS — 7 plan instructions → 7 applied edits (ids p1..p7) |
+
+Span-width INFO notes (diagnostic only — 10N posture, not WARN): `w:ins[id=18]=106 words` (the new clause 8A "No Warranty or Obligation to Proceed" — gap-fill insertion; structurally a new clause body, not a rewrite); `w:ins[id=14]=57 words` (clause 6 retention carve-outs); four others 21–39 words. The 106-word block routed through Adeu's delegation path (`[VL-DEBUG] Word-diff: spans 2 paragraphs, delegating to engine`) rather than the inline path — the inline-vs-delegation seam from 10M kicked in correctly for the multi-paragraph case. Edit p4 also tripped `[VL-DEBUG] Word-diff: heavy rewrite detected (90%)` — same wide-target signature 10N/10O exhibited on clause 4 connector handling.
+
+**Planner-layer evidence on the two hypotheses (architecture-side; substantive verdict is Arturs's call).**
+
+- **(a) Architecture portability — confirmed at the mechanical layer.** Same code path, different client posture, valid Zenith-attributed redline produced end-to-end. The pipeline is not coupled to Acme-side framing.
+- **(b) Thin-brief judgement — pending substantive review.** Three of the seven instructions cover concerns the Zenith brief did not name explicitly: p4 (independent-development carve-out), p5 (return/destruction operational carve-outs — backups, compliance files, internal records), and p7 (new clause 8A "No Warranty or Obligation to Proceed"). The planner inferred these from "supplier of professional services" + "exposure" + "open-ended risk" framing. Whether they are correct supplier-side moves (judgement PASS) or speculative additions the brief explicitly warned against ("Don't over-mark") is the substantive question for Arturs.
+
+**Cross-clause behaviour worth flagging.** `cross_clause_notes` Note 1: *"The Purpose definition in Clause 1 drives the use restriction in Clause 2, so broadening the Purpose is preferable to editing the Clause 2 use restriction more heavily."* The planner recognised the Purpose↔Clause-2 cross-coupling at the reasoning level — but did NOT emit a per-location instruction to broaden the Purpose definition. p2 amends Clause 2's first sentence (subject to permitted disclosures) but the Purpose was left untouched. **Same shape as 10O's mutual-obligations gap: cross-clause directive recognised in `cross_clause_notes`, not propagated into per-location edits.** Independent confirmation from 10P-prep that GPT-5.5 non-Pro's cross-document propagation is a capability ceiling, not a 10O-Acme-brief-specific artefact. (10O entry's verdict already records this; 10P-prep adds a second data point on a thinner brief.)
+
+**Surprises, flagged honestly.**
+
+1. **Edit count rose from 10O's 4 to 10P-prep's 7 against a brief that explicitly said "Don't over-mark."** Two readings, both consistent with the data: (i) the planner over-marked despite the explicit instruction (capability finding for hypothesis (b) — non-Pro tier is weak on volume restraint when the brief is thin); (ii) supplier-side review with no specific instructions legitimately requires more breadth than counterparty-side review under a tactical brief, and 7 is the right count. Arturs's review tells us which.
+2. **Planner emitted a NEW clause (8A) rather than amending an existing clause.** p7 inserts a new "No Warranty or Obligation to Proceed" clause between Clauses 8 and 9, manually numbered "8A". This is a structural addition, not a redline of existing language, and is an instructive data point: the planner is willing to *add* clauses under thin briefing, not just modify existing ones. Whether this is desirable depends on whether the partner expects new-clause-creation in first-pass redlining.
+3. **`response_metadata.model_name` confirms planner routing as `openai/gpt-5.5-20260423`** (the dated GPT-5.5 non-Pro snapshot — same tier as 10O). Per CLAUDE.md §"Verify model routing against LangChain reply metadata, not env vars" (the rule established by 10O's verification audit), this is the API-envelope-grounded provenance for the routing claim. No tier change vs 10O; (b) tests the same tier under different briefing.
+4. **`w:ins=12, w:del=6` is twice 10O's `w:ins=6, w:del=5`.** Driven by edit count (7 vs 4) and by the inline word-diff producing multiple ins/del per instruction in some cases (e.g. p1's wide rewrite produced multiple ins/del in clean view). The 1:1 instruction-to-edit count holds at the plan→pipeline boundary; ins/del count is downstream of the diff cleanup pass.
+5. **Author propagation worked through both the inline path and the delegation path uniformly.** All 12 w:ins and 6 w:del carry `w:author="Zenith Counsel"` regardless of whether the producing edit went through `_create_track_change_tag` (inline) or `engine.apply_edits` delegation (the multi-paragraph p7 case). `engine.author` set at construction governs both paths — no separate author plumbing needed for the delegation route.
+
+**Carry-forward notes.**
+
+(i) **10P-prep's output is the 10P fixture.** `nda-output.docx` on feature branch `sprint-10P-prep-zenith-firstpass` is now Zenith's first-pass redline of the Acme NDA — a tracked-change document with 18 changes attributed to "Zenith Counsel". 10P proper consumes this as input, runs Oscar on the Acme side responding to Zenith's positions, and tests the counterparty-response workflow per Phase 0 + 0.5 research. The author distinction (Zenith Counsel on the input changes; "Acme Counsel" or equivalent on Oscar's responses) lets 10P's `state-of-play` extraction route correctly.
+
+(ii) **Cross-clause directive ceiling re-observed under thin briefing.** The Purpose↔Clause-2 propagation miss in 10P-prep mirrors 10O's mutual-obligations propagation miss. Same model tier (GPT-5.5 non-Pro), same shape of failure (recognises the cross-coupling in `cross_clause_notes`, doesn't emit per-location instructions). 10Q's tier-bump test on counterparty response (GPT-5.5 Pro at $30/$180) remains the natural next probe, now with two data points motivating it rather than one.
+
+(iii) **No Adeu surface change required for author attribution.** The Phase 1A surface check confirmed end-to-end propagation through `engine.author`. Any future sprint changing author attribution sets it once at `RedlineEngine(stream, author=...)` construction; no per-call argument needed at the inline-path emission sites.
+
+(iv) **Inline-vs-delegation seam observed firing on a multi-paragraph insert.** p7 (new clause 8A) routed through Adeu's delegation path because the new content spans two paragraphs. This is the 10M architectural seam working as intended: inline path for single-paragraph word-diffs, delegation path for multi-paragraph cases. No regression; documents that the seam exercises both branches in a single run when the planner emits structurally varied edits.
+
+(v) **Arturs's standing review items** still outstanding from 10E/10K/10L/10M/10N plus 10P-prep's substantive verdict (over-mark judgement; supplier-side concerns inference quality; cross-clause directive miss confirmation; author attribution as expected in Word's Reviewing Pane).
+
+**Substantive verdict (Arturs's review of `nda-output.docx`):** TBD. *To be appended when received. Five questions to assess: (1) does the redline read like a supplier-side review (lighter than Acme's; focused on limiting exposure)? (2) did the planner correctly identify supplier-side concerns despite the brief naming none (p4/p5/p7 in particular)? (3) did Oscar over-mark? (4) is "Zenith Counsel" attribution visible and correct in Word's Review Pane? (5) does the cross-clause Purpose↔Clause-2 miss read as a real omission, confirming the GPT-5.5 non-Pro cross-document propagation ceiling?*
+
+**No new ADRs.** No new dependencies (Adeu version pin unchanged from 10N/10O). No policy widenings. `.env.example` unchanged from 10O. `requirements.txt` unchanged.
+
+**Next sprint picks up from:** (a) Arturs's substantive verdict on `nda-output.docx`; (b) if production-acceptable: 10P proper consumes this .docx as the counterparty fixture and proceeds per Phase 0 + 0.5 research (port MCP's `counter_propose_helpers.py` ~190 LoC; build state-of-play extraction; planner-executor under counterparty-response framing); (c) if architecture is right but supplier-side judgement quality is weak (over-mark, missed concerns, etc.): 10P proper proceeds anyway because the fixture is structurally valid; the judgement-quality finding is logged for 10Q tier-bump consideration; (d) if mechanical issues surface in Word that the verify_output didn't catch: those become 10P-prep iteration items, not 10P proper concerns.
