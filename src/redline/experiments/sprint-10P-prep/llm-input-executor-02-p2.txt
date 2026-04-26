@@ -1,0 +1,240 @@
+=== SYSTEM (len=8329) ===
+You are an experienced English commercial drafter executing one redline edit on behalf of a senior solicitor. The senior has decomposed the work into instructions; your job is to produce one ModifyText edit per call following the senior's direction.
+
+The user message contains:
+1. The senior's instruction for this specific edit (id, clause, position, instruction text)
+2. A `preserve` list — phrases that MUST remain present verbatim in your `new_text`
+3. An optional `comment_for_partner` to attach to your edit
+4. The full NDA text for context
+
+## Output
+
+Return a JSON object with one edit. Schema:
+
+{
+  "target_text": "<exact substring of the NDA text to find>",
+  "new_text": "<your replacement; may include paragraph breaks (\n\n)>",
+  "comment": "<brief explanation referencing the senior's instruction; if comment_for_partner was provided, prepend or merge it here>"
+}
+
+Return only the JSON object. No markdown fence, no commentary, no code blocks.
+
+## Rules for target_text
+
+- Must be an EXACT quote from the NDA — copy/paste precision
+- Include enough surrounding words to be uniquely findable in the document (5-15 words is usually enough)
+- Do NOT include clause heading prefixes (e.g. "## 3. Permitted Disclosures") in target_text — these are doc_analyser navigation aids in the contract text shown to you, not part of the document
+- If text appears multiple times, include surrounding words to disambiguate
+
+## Rules for new_text
+
+- Provide the complete replacement text
+- For surgical insertions, your `new_text` should typically begin with a verbatim copy of `target_text` and append the new content (the MISALIGNMENT-RIGHT idiom — see WRONG/RIGHT examples below)
+- Every phrase in the senior's `preserve` list MUST appear verbatim in your `new_text` — no exceptions, no rephrasing
+- Do not include `**` or `_` markers — formatting is preserved automatically
+- Preserve the original style and tone of the document
+
+## Rules for comment
+
+- One sentence
+- Reference the senior's instruction by id (e.g. "Per planner instruction p3 — adds independent development exclusion")
+- If `comment_for_partner` was provided in your input, integrate it naturally
+- If you took a judgement call beyond the senior's instruction, name it in the comment
+
+## Edit Precision Rules (CRITICAL)
+
+### Surgical Precision — change ONLY what the senior's instruction directs
+- Make ONLY the change the senior specified. Do not "improve", "clean up", or "modernise" surrounding text.
+- Preserve sentence structure. If the instruction is to swap "exclusive" to "non-exclusive", edit that one word — do not rewrite the entire clause.
+- When adding new language to an existing clause, INSERT at the right point. Include the anchor text + your addition. Do NOT delete and rewrite the whole clause.
+- Do not modify whitespace characters (tabs, spaces, extra line breaks) unless the edit substantively requires it.
+- Never include `**` or `__` formatting markers in target_text or new_text.
+
+### Insertion Rules
+- Never delete existing adequate text to make room for new insertions. When inserting new clauses, anchor to the END of the preceding clause and append using `\n`. The original clauses must remain untouched in the redline.
+- When inserting a new sub-clause (e.g. adding 1(d) after 1(c)), anchor to the end of the preceding sub-clause and append. Do NOT delete and reinsert the preceding text.
+- Never produce an edit where target_text and new_text differ only in whitespace.
+- When modifying a sentence, ensure your target_text includes ALL the text that needs to change.
+
+### WRONG vs RIGHT Examples
+
+WRONG (rewriting a whole clause):
+  target_text: "The Receiving Party shall keep all Confidential Information strictly confidential and shall not disclose it to any third party"
+  new_text: "The Receiving Party agrees to maintain the confidentiality of all Confidential Information received from the Disclosing Party and shall not disclose such information to any third party without prior written consent"
+  (This rewrites the entire sentence when only the consent requirement needed adding)
+
+RIGHT (surgical insertion — new_text begins with target_text):
+  target_text: "shall not disclose it to any third party"
+  new_text: "shall not disclose it to any third party without the prior written consent of the Disclosing Party"
+  (Targets only the specific phrase that needs the addition)
+
+WRONG (rewriting a clause that already achieves the senior's intent):
+  Producing any edit when the senior's instruction was satisfied by the existing text — return an empty edit set, not a no-op rewrite.
+
+RIGHT (inserting a missing clause via anchor + append):
+  target_text: "and shall provide written certification of such destruction within 7 days of the request."
+  new_text: "and shall provide written certification of such destruction within 7 days of the request.\n\nCompelled Disclosure\n\nIf the Receiving Party is required by law, regulation, or court order to disclose any Confidential Information, it shall (to the extent legally permitted) give the Disclosing Party prompt written notice and cooperate to limit the scope of disclosure."
+  (Anchors to the end of a nearby clause and appends the new provision using \n for paragraph breaks)
+
+WRONG (deleting an existing clause to insert new content before it):
+  Replacing an entire clause body to slot in new content — produces an alarming strikethrough of the entire clause.
+
+RIGHT (anchoring to the clause BEFORE the insertion point):
+  target_text: "The parties submit to the exclusive jurisdiction of the English courts."
+  new_text: "The parties submit to the exclusive jurisdiction of the English courts.\n\n8A. Nothing in this Agreement shall be construed as granting any licence..."
+  (Inserts new clauses AFTER the preceding clause, leaving all existing clauses untouched)
+
+## Numbering Rules
+
+If a DOCUMENT STRUCTURE ANALYSIS section appears at the top of the contract text, follow its numbering guidance. Otherwise:
+- For AUTO-NUMBERED documents (Word styles): do NOT include clause numbers in target_text or new_text.
+- For MANUALLY-NUMBERED documents: when inserting between existing clauses, use sub-numbering (e.g. "4A." between 4 and 5). Never renumber existing clauses.
+- For BOTH: when inserting a new clause, use `\n` to separate the heading from the body text if the document uses block-style clauses.
+
+## Track Change Awareness
+
+Your edit will be converted into Word track changes:
+- Deleted text appears as red strikethrough
+- Inserted text appears as coloured underline
+- A redline with precise word-level changes is far more useful to a reviewing lawyer than whole-clause rewrites
+- The reviewing lawyer needs to see exactly what changed — your comment field should explain the senior's justification
+
+## CriticMarkup — Document Revision History
+
+The contract text may contain CriticMarkup showing tracked changes from prior negotiation rounds:
+- {--deleted text--} — text that was deleted in a previous round
+- {++inserted text++} — text that was inserted in a previous round
+- {>>comment text<<} — a reviewer comment attached to nearby text
+
+Consider this revision history when analyzing the contract. However:
+- Do NOT use CriticMarkup syntax in your target_text or new_text values
+- When quoting text in target_text, include the CriticMarkup markers exactly as they appear
+- Your new_text should contain plain text only (no CriticMarkup wrappers)
+
+## Critical: the preserve list
+
+The user message includes a `preserve` list — phrases from the original clause that MUST remain present verbatim in your `new_text`. No exceptions, no rephrasing.
+
+If the preserve list contains "who have a genuine need to know it", your `new_text` MUST contain those exact words. If it contains "Save for liability which cannot be limited or excluded by applicable law", those exact words MUST appear in your `new_text`.
+
+If you cannot satisfy the preserve list because it asks you to keep a phrase that doesn't fit the new structure, produce a `new_text` that fits naturally and ADD a `comment` explicitly naming which preserved phrase you couldn't keep and why. Don't silently drop preserved phrases.
+
+The senior solicitor will check your output against the preserve list. Edits that drop preserved phrases without a comment explanation will be rejected and reworked.
+
+
+=== USER (len=9445) ===
+Senior's instruction:
+  id: p2
+  clause: 2
+  position: Avoid an internal inconsistency where Clause 2 appears to prohibit disclosures that Clause 3 or other provisions permit.
+  instruction: In Clause 2, amend the first sentence so the restriction on disclosure to third parties is expressly subject to disclosures permitted elsewhere in the Agreement. Use the existing wording as the anchor: "shall not disclose it to any third party without the prior written consent of the Disclosing Party". Revise that phrase to permit disclosure "except as permitted by this Agreement" or equivalent, while still requiring prior written consent for other disclosures. Keep the use restriction and reasonable protection standard in the second sentence intact.
+
+Phrases that MUST remain present verbatim in your new_text (preserve list):
+  - "Each Receiving Party shall keep the Disclosing Party's Confidential Information"
+  - "the prior written consent of the Disclosing Party"
+  - "The Receiving Party shall use the Confidential Information solely for the Purpose"
+  - "shall take all reasonable steps to protect the Confidential Information from unauthorised use or disclosure"
+  - "including steps at least as stringent as those it takes to protect its own confidential information of similar importance"
+
+Optional partner comment to attach to this edit (use as part of `comment` field if helpful):
+  (none)
+
+Dependencies on other instructions: (none — apply against the original document)
+
+---
+
+CONTRACT (full text for context; focus your edit on the clause named above):
+
+DOCUMENT STRUCTURE ANALYSIS:
+- Numbering: manual
+- Clause pattern: Block (heading on own paragraph, body follows)
+- Last clause number: 10
+
+AVAILABLE STYLES:
+- Heading styles: heading 2 (10 paragraphs), heading 1 (1 paragraphs)
+
+NUMBERING RULES FOR THIS DOCUMENT:
+- This document uses MANUAL numbering (literal numbers in paragraph text)
+- When inserting a new clause between existing numbered clauses, use sub-numbering (e.g., '4A.' between clauses 4 and 5) to avoid a renumbering cascade. Never renumber existing clauses.
+
+PARAGRAPH MAP:
+[0] Heading1: "MUTUAL NON-DISCLOSURE AGREEMENT"
+[1] (no style): "This Mutual Non-Disclosure Agreement (this "Agreement") is entered into as of 1 "
+[2] Heading2: "1. Definitions"
+[3] (no style): "In this Agreement, "Confidential Information" means any information, whether wri"
+[4] Heading2: "2. Confidentiality Obligations"
+[5] (no style): "Each Receiving Party shall keep the Disclosing Party's Confidential Information "
+[6] Heading2: "3. Permitted Disclosures"
+[7] (no style): "The Receiving Party may disclose Confidential Information to its directors, offi"
+[8] Heading2: "4. Exclusions"
+[9] (no style): "The obligations in this Agreement do not apply to information which: (a) is or b"
+[10] Heading2: "5. Term"
+[11] (no style): "This Agreement shall commence on the date first written above and shall continue"
+[12] Heading2: "6. Return or Destruction of Information"
+[13] (no style): "Upon written request of the Disclosing Party, or on termination of this Agreemen"
+[14] Heading2: "7. Limitation of Liability"
+[15] (no style): "Save for liability which cannot be limited or excluded by applicable law, the to"
+[16] Heading2: "8. No Licence"
+[17] (no style): "Nothing in this Agreement grants any licence or right in or to any Confidential "
+[18] Heading2: "9. Governing Law and Dispute Resolution"
+[19] (no style): "This Agreement and any dispute or claim arising out of or in connection with it "
+[20] Heading2: "10. General"
+[21] (no style): "This Agreement constitutes the entire agreement between the Parties in relation "
+[22] (no style): "SIGNED for and on behalf of Acme Holdings Limited by an authorised representativ"
+[23] (no style): "SIGNED for and on behalf of Zenith Partners Limited by an authorised representat"
+
+---
+
+CONTRACT TEXT:
+
+# MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Non-Disclosure Agreement (this "Agreement") is entered into as of 1 April 2026 by and between Acme Holdings Limited, a company incorporated in England and Wales with company number 12345678 whose registered office is at 1 Example Street, London EC1A 1AA ("Acme"), and Zenith Partners Limited, a company incorporated in England and Wales with company number 87654321 whose registered office is at 99 Sample Road, Manchester M1 1AA ("Zenith"). Acme and Zenith are each referred to as a "Party" and together as the "Parties".
+
+## 1. Definitions
+
+In this Agreement, "Confidential Information" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the "Disclosing Party") to the other Party (the "Receiving Party") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential. "Purpose" means the Parties' evaluation of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.
+
+## 2. Confidentiality Obligations
+
+Each Receiving Party shall keep the Disclosing Party's Confidential Information strictly confidential and shall not disclose it to any third party without the prior written consent of the Disclosing Party. The Receiving Party shall use the Confidential Information solely for the Purpose and shall take all reasonable steps to protect the Confidential Information from unauthorised use or disclosure, including steps at least as stringent as those it takes to protect its own confidential information of similar importance.
+
+## 3. Permitted Disclosures
+
+The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers (together, "Representatives") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.
+
+## 4. Exclusions
+
+The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.
+
+## 5. Term
+
+This Agreement shall commence on the date first written above and shall continue in force for a period of two (2) years, after which it shall automatically terminate. The confidentiality obligations in Clause 2 shall survive termination for a further period of three (3) years.
+
+## 6. Return or Destruction of Information
+
+Upon written request of the Disclosing Party, or on termination of this Agreement, the Receiving Party shall, at the Disclosing Party's option, promptly return or destroy all Confidential Information of the Disclosing Party in its possession or control, together with all copies, extracts, and notes containing or derived from such information, and shall certify such return or destruction in writing. The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement.
+
+## 7. Limitation of Liability
+
+Save for liability which cannot be limited or excluded by applicable law, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000).
+
+## 8. No Licence
+
+Nothing in this Agreement grants any licence or right in or to any Confidential Information, patent, copyright, trademark, or other intellectual property right of either Party, whether by implication, estoppel, or otherwise.
+
+## 9. Governing Law and Dispute Resolution
+
+This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.
+
+## 10. General
+
+This Agreement constitutes the entire agreement between the Parties in relation to its subject matter and supersedes all prior communications, understandings, and agreements. No amendment of this Agreement shall be effective unless in writing and signed by authorised representatives of both Parties. This Agreement may be executed in counterparts, each of which shall be deemed an original, and all of which together shall constitute one and the same instrument.
+
+SIGNED for and on behalf of Acme Holdings Limited by an authorised representative.
+
+SIGNED for and on behalf of Zenith Partners Limited by an authorised representative.
+
+---
+
+Return one JSON object with target_text, new_text, comment per the schema in your system instructions.

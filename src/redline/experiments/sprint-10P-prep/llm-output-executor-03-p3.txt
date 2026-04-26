@@ -1,0 +1,7 @@
+```json
+{
+  "target_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.",
+  "new_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives, subject to the limitations on liability set out in Clause 7.",
+  "comment": "Per planner instruction p3 — expands permitted recipients in Clause 3 to include Affiliates (defined inline) and contractors/subcontractors engaged for the Purpose; expressly subjects Representative breach liability to Clause 7 liability cap."
+}
+```

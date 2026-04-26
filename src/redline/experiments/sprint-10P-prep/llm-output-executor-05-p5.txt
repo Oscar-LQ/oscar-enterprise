@@ -1,0 +1,7 @@
+```json
+{
+  "target_text": "The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement.",
+  "new_text": "The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement. Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
+  "comment": "Per planner instruction p5 — adds practical carve-outs to the return/destruction obligation permitting retention for professional obligations, insurance, audit, compliance and backup systems under appropriate safeguards."
+}
+```

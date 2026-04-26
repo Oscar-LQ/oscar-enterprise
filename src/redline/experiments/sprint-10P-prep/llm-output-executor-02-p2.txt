@@ -1,0 +1,7 @@
+```json
+{
+  "target_text": "shall not disclose it to any third party without the prior written consent of the Disclosing Party",
+  "new_text": "shall not disclose it to any third party without the prior written consent of the Disclosing Party, except as expressly permitted by this Agreement",
+  "comment": "Per planner instruction p2 — resolves internal inconsistency between Clause 2 and Clause 3 by adding an express carve-out for disclosures permitted elsewhere in the Agreement, while preserving the prior written consent requirement for other third-party disclosures."
+}
+```

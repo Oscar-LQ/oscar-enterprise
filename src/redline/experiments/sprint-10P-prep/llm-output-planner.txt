@@ -1,0 +1,116 @@
+{
+  "plan": [
+    {
+      "id": "p1",
+      "clause": "1",
+      "position": "Narrow the definition of Confidential Information so Zenith is not subject to obligations for information that was not identified, or not reasonably recognisable, as confidential, and ensure the Purpose covers negotiation and provision of the services, not just evaluation.",
+      "instruction": "In Clause 1, amend the definition of \"Confidential Information\" so it only covers information that is identified as confidential or that ought reasonably to be understood as confidential given its nature or the circumstances of disclosure. Do not leave the definition as covering all information \"whether or not marked or described as confidential\" without qualification. In the same paragraph, amend the definition of \"Purpose\" so it covers the Parties' evaluation, negotiation and/or performance/provision of the potential commercial collaboration relating to Zenith's supply of professional services to Acme. This is to avoid Zenith technically breaching the NDA by using Acme information if the services proceed beyond evaluation.",
+      "preserve": [
+        "\"Confidential Information\" means any information",
+        "whether written, oral, electronic, or in any other form",
+        "disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\")",
+        "in connection with the Purpose",
+        "including without limitation technical, commercial, financial, operational, and strategic information",
+        "\"Purpose\" means",
+        "relating to the supply of professional services by Zenith to Acme"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p2",
+      "clause": "2",
+      "position": "Avoid an internal inconsistency where Clause 2 appears to prohibit disclosures that Clause 3 or other provisions permit.",
+      "instruction": "In Clause 2, amend the first sentence so the restriction on disclosure to third parties is expressly subject to disclosures permitted elsewhere in the Agreement. Use the existing wording as the anchor: \"shall not disclose it to any third party without the prior written consent of the Disclosing Party\". Revise that phrase to permit disclosure \"except as permitted by this Agreement\" or equivalent, while still requiring prior written consent for other disclosures. Keep the use restriction and reasonable protection standard in the second sentence intact.",
+      "preserve": [
+        "Each Receiving Party shall keep the Disclosing Party's Confidential Information",
+        "the prior written consent of the Disclosing Party",
+        "The Receiving Party shall use the Confidential Information solely for the Purpose",
+        "shall take all reasonable steps to protect the Confidential Information from unauthorised use or disclosure",
+        "including steps at least as stringent as those it takes to protect its own confidential information of similar importance"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p3",
+      "clause": "3",
+      "position": "Ensure Zenith can operate through appropriate service delivery channels while preserving need-to-know and confidentiality controls; make clear representative liability remains subject to the liability cap.",
+      "instruction": "In Clause 3, expand the list of permitted recipients within the defined term \"Representatives\" to include Affiliates and contractors/subcontractors used in connection with the Purpose. If adding Affiliates, define them in-line in a light-touch way, e.g. entities controlling, controlled by or under common control with a Party. Do not remove the existing need-to-know limitation or the obligation to ensure confidentiality obligations. Also amend the final sentence so the Receiving Party's liability for Representative breaches is expressly subject to Clause 7. Use the existing final sentence \"The Receiving Party shall be liable for any breach of this Agreement by its Representatives.\" as the anchor.",
+      "preserve": [
+        "directors, officers, employees, and professional advisers",
+        "(together, \"Representatives\")",
+        "who have a genuine need to know it for the Purpose",
+        "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement",
+        "The Receiving Party shall be liable for any breach of this Agreement by its Representatives"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p4",
+      "clause": "4",
+      "position": "Add standard supplier-friendly exclusions for independent development and compelled regulatory disclosure without disturbing the existing exclusions.",
+      "instruction": "In Clause 4, add a new exclusion for information independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information. Also expand the compelled disclosure limb so it covers disclosure required by a competent governmental or regulatory authority, in addition to law, regulation or court order. Keep the existing public domain, prior possession, third-party source and compelled disclosure exclusions. Keep the existing prompt notice obligation for compelled disclosure.",
+      "preserve": [
+        "The obligations in this Agreement do not apply to information which:",
+        "(a) is or becomes publicly available other than through a breach of this Agreement",
+        "(b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure",
+        "(c) is lawfully obtained from a third party without breach of any obligation of confidence",
+        "(d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction",
+        "provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p5",
+      "clause": "6",
+      "position": "Make the return/destruction obligation operationally workable for a professional services supplier, especially for backups, compliance files and internal records.",
+      "instruction": "In Clause 6, preserve the core obligation to return or destroy Confidential Information on request or termination, but add practical carve-outs. Specifically, permit retention of Confidential Information to the extent required by applicable law, regulation, professional obligations, insurance, audit, compliance or reasonable internal record-keeping policies. Also add that the Receiving Party is not required to delete Confidential Information from automatic electronic backups or archival systems where deletion is not reasonably practicable, provided such information is not restored or accessed except as required for legal, regulatory, compliance or business continuity purposes and remains subject to the Agreement.",
+      "preserve": [
+        "Upon written request of the Disclosing Party, or on termination of this Agreement",
+        "the Receiving Party shall, at the Disclosing Party's option, promptly return or destroy all Confidential Information of the Disclosing Party in its possession or control",
+        "together with all copies, extracts, and notes containing or derived from such information",
+        "and shall certify such return or destruction in writing",
+        "The Receiving Party may retain one copy of any Confidential Information",
+        "where required by applicable law or its reasonable internal record-keeping policies",
+        "provided that such retained copy remains subject to this Agreement"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p6",
+      "clause": "7",
+      "position": "Keep Zenith's monetary exposure controlled by preserving the cap and adding a standard exclusion of indirect and consequential losses.",
+      "instruction": "In Clause 7, keep the mandatory-law carve-out and the GBP 100,000 aggregate cap. Add a sentence excluding liability for indirect or consequential loss and for loss of profit, revenue, business, goodwill, anticipated savings or data, in each case to the extent permitted by applicable law. Do not add any new uncapped carve-outs for confidentiality breaches, misuse of Confidential Information or Representatives' acts. The change should sit within Clause 7 after the existing cap sentence or be integrated into it cleanly.",
+      "preserve": [
+        "Save for liability which cannot be limited or excluded by applicable law",
+        "the total aggregate liability of each Party to the other under or in connection with this Agreement",
+        "whether in contract, tort (including negligence), breach of statutory duty, or otherwise",
+        "shall not exceed one hundred thousand pounds sterling (GBP 100,000)"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p7",
+      "clause": "8",
+      "position": "Add a light-touch no-warranty/no-obligation provision to prevent open-ended risk from the accuracy or use of disclosed information and to confirm neither party is forced to proceed with the transaction.",
+      "instruction": "Insert a new Clause 8A immediately after Clause 8 and before Clause 9, using manual numbering as \"8A. No Warranty or Obligation to Proceed\". The new clause should state that Confidential Information is provided \"as is\"; neither Party gives any representation or warranty as to its accuracy or completeness; no Party has liability for the other Party's use of Confidential Information except for fraudulent misrepresentation or as expressly set out in the Agreement; and nothing in the Agreement obliges either Party to proceed with any transaction, engagement or commercial collaboration. Do not alter the existing Clause 8 no-licence wording.",
+      "preserve": [
+        "Nothing in this Agreement grants any licence or right in or to any Confidential Information, patent, copyright, trademark, or other intellectual property right of either Party",
+        "whether by implication, estoppel, or otherwise"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    }
+  ],
+  "cross_clause_notes": [
+    "The Purpose definition in Clause 1 drives the use restriction in Clause 2, so broadening the Purpose is preferable to editing the Clause 2 use restriction more heavily.",
+    "Permitted disclosure changes in Clause 3 must preserve the existing need-to-know and confidentiality-obligation controls; otherwise adding Affiliates or subcontractors would materially broaden disclosure rights.",
+    "Representative liability in Clause 3 and the liability cap in Clause 7 should be aligned so that expanding the Representative class does not accidentally create uncapped exposure.",
+    "Operational supplier carve-outs appear in both Clause 4 and Clause 6: independent development belongs in the exclusions, while backups and compliance records belong in return/destruction."
+  ]
+}
