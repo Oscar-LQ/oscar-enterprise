@@ -208,14 +208,24 @@ agree on shape.
 
 - **Single string.** Result of reading `playbook-{document_type}.docx`
   via `python-docx Document(path)` and concatenating the document's
-  paragraphs in document order.
-- **Paragraph breaks preserved.** Two newlines between paragraphs so
-  the planner sees the prose-shape of the playbook (sectioned by
-  category, position-and-fallback per category).
-- **Headings inline.** H1 / H2 headings are rendered as plain-text
-  lines (the heading text on its own line), not stripped, not styled.
-  The planner reads "## 5. Indemnity caps" or equivalent as a section
-  marker.
+  paragraphs in document order. The output is consumed verbatim by
+  the prompt's named context-layer section — no further formatting,
+  escaping, or transformation.
+- **Headings rendered as markdown.** H1 headings emit as
+  `# {heading text}`; H2 headings emit as `## {heading text}`.
+  Heading text is preserved verbatim from the .docx style — no
+  normalisation, no rewriting. The planner reads `## 5. Indemnity
+  caps` as a section marker, matching the prose shape of the source
+  playbook.
+- **Paragraph break convention.** Double newline (`\n\n`) between
+  prose paragraphs — the blank-line separator that conventional
+  markdown uses. Single newline (`\n`) immediately after a heading
+  line before the first body paragraph of that section — the heading
+  attaches visually to its body, which matches the reading rhythm of
+  the source .docx. Between consecutive headings (no body in
+  between) the rule degenerates to `\n\n` — a heading line followed
+  by another heading line is a section transition, not a heading-
+  with-body pairing.
 - **Empty string on three-level fallback miss** (per MCP loader
   pattern — explicit path → project-dir glob → empty). Empty playbook
   is a valid state; the prompt handles the empty-layer case
@@ -224,6 +234,32 @@ agree on shape.
   only per Phase 1.1 conversion rules. The loader does not need to
   handle bullets or tables; if the .docx contains them in future, the
   loader emits them as plain text without structural markers.
+
+### Concrete output example
+
+For the Phase 1.1 playbook, the loader output begins:
+
+```
+# Customer-Side Compute Capacity MSA Playbook (Draft)
+## Preliminary note
+The deals this playbook applies to are large compute-capacity
+arrangements...
+
+## 1. Data residency and sovereignty
+Customer data — inputs, outputs, and provider-generated derivatives —
+must remain in jurisdictions the customer names...
+
+The fallback we can live with is a hard commitment for primary
+production workloads in named regions...
+
+## 2. Model and weight ownership
+...
+```
+
+Heading immediately followed by single `\n` then body; body paragraphs
+separated by `\n\n`; next heading separated from the preceding
+paragraph by `\n\n`. Phase 1.2 implementation produces strings
+matching this shape; Phase 1.3 inserts them verbatim.
 
 ### Prompt input shape
 
