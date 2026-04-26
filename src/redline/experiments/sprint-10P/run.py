@@ -274,9 +274,11 @@ def run_once() -> int:
     )
 
     # 1. Inputs.
-    nda_input = HERE / "nda-input-minimal.docx"
+    full_run = "--full" in sys.argv
+    cache_run = "--cache" in sys.argv  # reuse cached LLM output if present
+    nda_input = HERE / ("nda-input-full.docx" if full_run else "nda-input-minimal.docx")
     nda_original = HERE / "nda-original.docx"
-    nda_output = HERE / "nda-output-minimal.docx"
+    nda_output = HERE / ("nda-output.docx" if full_run else "nda-output-minimal.docx")
     if not nda_input.exists():
         print(f"[10P] missing input: {nda_input}", file=sys.stderr)
         print("[10P] run build_input.py first to assemble the cut-down fixture.", file=sys.stderr)
@@ -311,17 +313,22 @@ def run_once() -> int:
     )
 
     # 5. Invoke planner.
-    planner_chat = get_chat_model(env_prefix="OSCAR_LLM_REDLINE_PLANNER")
-    print(f"[10P] invoking planner {p_provider}/{p_model} ...")
-    p_reply = planner_chat.invoke(
-        [SystemMessage(content=planner_system), HumanMessage(content=planner_user)]
-    )
-    capture_reply_metadata(p_reply, HERE / "llm-meta-planner.json")
-    p_raw = p_reply.content if hasattr(p_reply, "content") else str(p_reply)
-    if not isinstance(p_raw, str):
-        p_raw = json.dumps(p_raw, ensure_ascii=False)
-    _write(HERE / "llm-output-planner.txt", p_raw)
-    print(f"[10P] planner reply = {len(p_raw)} chars")
+    planner_output_path = HERE / "llm-output-planner.txt"
+    if cache_run and planner_output_path.exists():
+        p_raw = planner_output_path.read_text(encoding="utf-8")
+        print(f"[10P] CACHE: loaded planner output ({len(p_raw)} chars)")
+    else:
+        planner_chat = get_chat_model(env_prefix="OSCAR_LLM_REDLINE_PLANNER")
+        print(f"[10P] invoking planner {p_provider}/{p_model} ...")
+        p_reply = planner_chat.invoke(
+            [SystemMessage(content=planner_system), HumanMessage(content=planner_user)]
+        )
+        capture_reply_metadata(p_reply, HERE / "llm-meta-planner.json")
+        p_raw = p_reply.content if hasattr(p_reply, "content") else str(p_reply)
+        if not isinstance(p_raw, str):
+            p_raw = json.dumps(p_raw, ensure_ascii=False)
+        _write(planner_output_path, p_raw)
+        print(f"[10P] planner reply = {len(p_raw)} chars")
 
     # 6. Parse decisions.
     try:
@@ -367,11 +374,17 @@ def run_once() -> int:
         counter_idx["n"] += 1
         n = counter_idx["n"]
         cid = decision.get("change_id", "?")
+        cid_safe = cid.replace(":", "_")
+        executor_output_path = HERE / f"llm-output-executor-{n:02d}-{cid_safe}.txt"
+        if cache_run and executor_output_path.exists():
+            e_raw = executor_output_path.read_text(encoding="utf-8")
+            print(f"[10P] CACHE: loaded executor output for {cid} ({len(e_raw)} chars)")
+            return parse_single_edit_response(e_raw)
         # Convert state_entry (Pydantic) to dict for prompt_builder.
         entry_dict = json.loads(state_entry.model_dump_json())
         executor_user = build_executor_user_prompt(decision, entry_dict)
         _write(
-            HERE / f"llm-input-executor-{n:02d}-{cid.replace(':', '_')}.txt",
+            HERE / f"llm-input-executor-{n:02d}-{cid_safe}.txt",
             f"=== SYSTEM (len={len(executor_system)}) ===\n{executor_system}\n\n"
             f"=== USER (len={len(executor_user)}) ===\n{executor_user}\n",
         )
@@ -379,11 +392,11 @@ def run_once() -> int:
         e_reply = executor_chat.invoke(
             [SystemMessage(content=executor_system), HumanMessage(content=executor_user)]
         )
-        capture_reply_metadata(e_reply, HERE / f"llm-meta-executor-{n:02d}-{cid.replace(':', '_')}.json")
+        capture_reply_metadata(e_reply, HERE / f"llm-meta-executor-{n:02d}-{cid_safe}.json")
         e_raw = e_reply.content if hasattr(e_reply, "content") else str(e_reply)
         if not isinstance(e_raw, str):
             e_raw = json.dumps(e_raw, ensure_ascii=False)
-        _write(HERE / f"llm-output-executor-{n:02d}-{cid.replace(':', '_')}.txt", e_raw)
+        _write(executor_output_path, e_raw)
         return parse_single_edit_response(e_raw)
 
     # 8. Apply decisions. Author = "Acme Counsel" — rule 2.

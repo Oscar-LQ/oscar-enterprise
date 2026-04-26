@@ -1,1 +1,0 @@
-{"new_text":"and its Affiliates, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party","comment":"Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor under §6."}

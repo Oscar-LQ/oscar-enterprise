@@ -1,14 +1,14 @@
 {
-  "content_len": 237,
+  "content_len": 661,
   "response_metadata": {
     "token_usage": {
-      "completion_tokens": 512,
-      "prompt_tokens": 2006,
-      "total_tokens": 2518,
+      "completion_tokens": 1293,
+      "prompt_tokens": 2115,
+      "total_tokens": 3408,
       "completion_tokens_details": {
         "accepted_prediction_tokens": null,
         "audio_tokens": null,
-        "reasoning_tokens": 473,
+        "reasoning_tokens": 1183,
         "rejected_prediction_tokens": null
       },
       "prompt_tokens_details": null,
@@ -17,7 +17,7 @@
     "model_provider": "openai",
     "model_name": "MiniMax-M2.7",
     "system_fingerprint": null,
-    "id": "063d85984b11d7b0082fe01236bd7b31",
+    "id": "063d8e7f51cc3c0968469d2e8c104386",
     "finish_reason": "stop",
     "logprobs": null
   },
@@ -25,12 +25,12 @@
     "refusal": null
   },
   "usage_metadata": {
-    "input_tokens": 2006,
-    "output_tokens": 512,
-    "total_tokens": 2518,
+    "input_tokens": 2115,
+    "output_tokens": 1293,
+    "total_tokens": 3408,
     "input_token_details": {},
     "output_token_details": {
-      "reasoning": 473
+      "reasoning": 1183
     }
   }
 }

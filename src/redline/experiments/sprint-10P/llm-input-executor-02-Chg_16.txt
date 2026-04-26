@@ -99,32 +99,34 @@ The user message names a `preserve` list — phrases that MUST remain present ve
 The senior solicitor will check your output against the preserve list. Edits that drop preserved phrases without a comment explanation will be rejected and reworked.
 
 
-=== USER (len=1903) ===
-Counter-proposal for Chg:1:
-  change_type: deletion
+=== USER (len=2448) ===
+Counter-proposal for Chg:16:
+  change_type: insertion
   target_text (Zenith's marked text, verbatim):
   >>>
-whether or not marked or described as confidential.
+ To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss, including loss of profit, revenue, business, goodwill, anticipated savings or data, whether or not such loss was foreseeable.
   <<<
 
   paragraph_context (the accepted-all view of the paragraph for surrounding context):
   >>>
-In this Agreement, "Confidential Information" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the "Disclosing Party") to the other Party (the "Receiving Party") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential. "Purpose" means the Parties' evaluation of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.
+Save for liability which cannot be limited or excluded by applicable law, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000). To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss, including loss of profit, revenue, business, goodwill, anticipated savings or data, whether or not such loss was foreseeable.
   <<<
 
 Senior's tactical position:
-  Hold Acme's original broad definition of Confidential Information so unmarked and oral information remains protected.
+  limit Zenith's broad consequential-loss exclusion so it does not undermine confidentiality remedies
 
 Senior's drafting instruction:
-  Counter-propose by reinstating the deleted wording at the end of the Confidential Information definition; Acme should not have to prove that information was marked or expressly described as confidential where it was disclosed in connection with the Purpose.
+  Revise Zenith's added sentence so any exclusion applies only to indirect or consequential loss and expressly does not exclude or limit liability for breach of confidentiality obligations, unauthorised use or disclosure of Confidential Information, or loss of or damage to Confidential Information or data arising from such breach; remove the broad listed heads of loss to the extent they could exclude direct losses.
 
 Phrases that MUST remain present verbatim in your new_text (preserve list):
-  - "whether written, oral, electronic, or in any other form"
-  - "including without limitation technical, commercial, financial, operational, and strategic information"
-  - "whether or not marked or described as confidential."
+  - "Save for liability which cannot be limited or excluded by applicable law,"
+  - "the total aggregate liability of each Party to the other under or in connection with this Agreement"
+  - "whether in contract, tort (including negligence), breach of statutory duty, or otherwise"
+  - "one hundred thousand pounds sterling (GBP 100,000)"
+  - "To the extent permitted by applicable law"
 
 Optional partner comment (use as part of the `comment` field if helpful):
-  Counter-proposed to restore coverage for unmarked information, which is important given the definition expressly covers oral and other non-documentary disclosures.
+  Counter-proposed — Acme can accept a conventional indirect-loss exclusion but not wording that could strip out direct confidentiality-breach losses or data-related losses.
 
 ---
 

@@ -1,38 +1,134 @@
 {
-  "accepts_applied": 1,
+  "accepts_applied": 16,
   "accepts_skipped": 0,
   "replies_applied": 0,
   "replies_skipped": 0,
   "counter_proposes": [
     {
-      "target_id": "Chg:1",
-      "status": "skipped",
-      "method": "",
-      "reason": "Replacement text identical to original",
-      "original_text": "whether or not marked or described as confidential.",
-      "new_text": "whether or not marked or described as confidential."
-    },
-    {
-      "target_id": "Chg:2",
+      "target_id": "Chg:7",
       "status": "success",
       "method": "surgical",
       "reason": "",
       "original_text": "and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party ",
-      "new_text": "and its Affiliates, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party"
+      "new_text": "and its Affiliates, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party, and to its contractors and subcontractors only with Acme's prior written consent (such contractors and subcontractors, upon disclosure, constituting \"Representatives\")"
+    },
+    {
+      "target_id": "Chg:16",
+      "status": "success",
+      "method": "surgical",
+      "reason": "",
+      "original_text": " To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss, including loss of profit, revenue, business, goodwill, anticipated savings or data, whether or not such loss was foreseeable.",
+      "new_text": "To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss; but nothing in this clause shall limit or exclude liability for any breach of confidentiality obligations, any unauthorised use or disclosure of Confidential Information, or any loss of or damage to Confidential Information or data arising from any such breach."
     }
   ],
   "add_comments": [
     {
-      "target_id": "Upon written request of the Disclosing Party, or on termination of this Agreement, the Receiving Party shall, at the Disclosing Party's option, promptly return or destroy all Confidential Information of the Disclosing Party in its possession or control, together with all copies, extracts, and notes containing or derived from such information, and shall certify such return or destruction in writing. The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement. Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
+      "target_id": "In this Agreement, \"Confidential Information\" means any information, whether",
       "status": "success",
       "reason": "",
-      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by non-access, limited-purpose access and continued confidentiality obligations."
+      "comment_text": "Accepted as part of the paired definition change — the replacement reasonable-understanding test is a workable English-law confidentiality threshold and avoids capturing immaterial non-confidential information."
     },
     {
-      "target_id": "Chg:2",
+      "target_id": "In this Agreement, \"Confidential Information\" means any information, whether",
       "status": "success",
       "reason": "",
-      "comment_text": "Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor."
+      "comment_text": "Accepted — information identified as confidential or reasonably understood as confidential remains protected while giving both parties a clearer objective boundary."
+    },
+    {
+      "target_id": "In this Agreement, \"Confidential Information\" means any information, whether",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted as part of the paired Purpose change — extending the Purpose beyond evaluation is commercially sensible if the parties move into negotiation or performance."
+    },
+    {
+      "target_id": "In this Agreement, \"Confidential Information\" means any information, whether",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — covering evaluation, negotiation and performance aligns the NDA with the likely lifecycle of the proposed services relationship."
+    },
+    {
+      "target_id": "Each Receiving Party shall keep the Disclosing Party's Confidential Information",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted as a conforming change to the permitted-disclosure carve-out and not a substantive relaxation of the consent requirement."
+    },
+    {
+      "target_id": "Each Receiving Party shall keep the Disclosing Party's Confidential Information",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — the express carve-out simply cross-refers to disclosures permitted elsewhere in the Agreement."
+    },
+    {
+      "target_id": "The Receiving Party may disclose Confidential Information to its directors,",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — this is the conforming deletion for Zenith's Clause 7 cross-reference, which is already subject to Acme's liability response below."
+    },
+    {
+      "target_id": "The Receiving Party may disclose Confidential Information to its directors,",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — Clause 7 already applies generally, and Acme's separate counter-proposal preserves its position on any overbroad exclusion of recoverable losses."
+    },
+    {
+      "target_id": "The obligations in this Agreement do not apply to information which: (a) is or",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — express court orders are a sensible subset of legally compelled disclosures and the notice protection remains."
+    },
+    {
+      "target_id": "The obligations in this Agreement do not apply to information which: (a) is or",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — this is replaced by the court order and competent authority wording without removing the prompt-notice safeguard."
+    },
+    {
+      "target_id": "The obligations in this Agreement do not apply to information which: (a) is or",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — competent governmental or regulatory authority wording is standard for mandatory disclosure requests and remains subject to notice where lawful."
+    },
+    {
+      "target_id": "The obligations in this Agreement do not apply to information which: (a) is or",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted as a punctuation change needed to add the independent-development exclusion."
+    },
+    {
+      "target_id": "The obligations in this Agreement do not apply to information which: (a) is or",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — independently developed information is a standard exclusion provided it is developed without use of or reference to Acme's Confidential Information."
+    },
+    {
+      "target_id": "Upon written request of the Disclosing Party, or on termination of this",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by no restoration or access except for limited purposes and continuing confidentiality."
+    },
+    {
+      "target_id": "Nothing in this Agreement grants any licence or right in or to any Confidential",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — a separate no-warranty/no-obligation-to-proceed clause is standard NDA architecture and avoids renumbering by using 8A."
+    },
+    {
+      "target_id": "The Confidential Information is provided by each Disclosing Party on an \"as is\"",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — as-is, no-warranty and no-obligation-to-proceed wording is standard for an NDA and is subject to the fraud and express-agreement carve-outs."
+    },
+    {
+      "target_id": "Chg:7",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Counter-proposed Affiliates only — adding contractors and subcontractors materially widens the disclosure perimeter beyond the parties Acme can sensibly monitor."
+    },
+    {
+      "target_id": "Chg:16",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Counter-proposed — Acme can accept a conventional indirect-loss exclusion but not wording that could strip out direct confidentiality-breach losses or data-related losses."
     }
   ],
   "no_actions": [],

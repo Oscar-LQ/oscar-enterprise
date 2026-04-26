@@ -1,39 +1,116 @@
 {
   "decisions": [
     {
-      "action": "counter_propose",
+      "action": "accept",
       "change_id": "Chg:1",
-      "position": "Hold Acme's original broad definition of Confidential Information so unmarked and oral information remains protected.",
-      "instruction": "Counter-propose by reinstating the deleted wording at the end of the Confidential Information definition; Acme should not have to prove that information was marked or expressly described as confidential where it was disclosed in connection with the Purpose.",
-      "preserve": [
-        "whether written, oral, electronic, or in any other form",
-        "including without limitation technical, commercial, financial, operational, and strategic information",
-        "whether or not marked or described as confidential."
-      ],
-      "comment_text": "Counter-proposed to restore coverage for unmarked information, which is important given the definition expressly covers oral and other non-documentary disclosures."
+      "comment_text": "Accepted as part of the paired definition change — the replacement reasonable-understanding test is a workable English-law confidentiality threshold and avoids capturing immaterial non-confidential information."
     },
     {
-      "action": "counter_propose",
+      "action": "accept",
       "change_id": "Chg:2",
-      "position": "Narrow Zenith's expanded recipient group to Affiliates only and exclude contractors and subcontractors absent consent.",
-      "instruction": "Revise Zenith's insertion so the permitted disclosure wording adds Affiliates and the Affiliate definition, but removes contractors and subcontractors from the automatic permitted-recipient group; keep the Representatives label applying to the approved recipient categories and preserve the need-to-know, confidentiality flow-down and Receiving Party liability protections.",
-      "preserve": [
-        "directors, officers, employees, and professional advisers",
-        "where \"Affiliates\" means entities controlling, controlled by or under common control with a Party",
-        "who have a genuine need to know it for the Purpose",
-        "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement",
-        "The Receiving Party shall be liable for any breach of this Agreement by its Representatives."
-      ],
-      "comment_text": "Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor."
+      "comment_text": "Accepted — information identified as confidential or reasonably understood as confidential remains protected while giving both parties a clearer objective boundary."
     },
     {
       "action": "accept",
       "change_id": "Chg:3",
-      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by non-access, limited-purpose access and continued confidentiality obligations."
+      "comment_text": "Accepted as part of the paired Purpose change — extending the Purpose beyond evaluation is commercially sensible if the parties move into negotiation or performance."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:4",
+      "comment_text": "Accepted — covering evaluation, negotiation and performance aligns the NDA with the likely lifecycle of the proposed services relationship."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:5",
+      "comment_text": "Accepted as a conforming change to the permitted-disclosure carve-out and not a substantive relaxation of the consent requirement."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:6",
+      "comment_text": "Accepted — the express carve-out simply cross-refers to disclosures permitted elsewhere in the Agreement."
+    },
+    {
+      "action": "counter_propose",
+      "change_id": "Chg:7",
+      "position": "narrow Zenith's broadening of the permitted-recipient group to Affiliates only and exclude contractors/subcontractors for now",
+      "instruction": "Replace Zenith's insertion with a narrower addition permitting disclosure to Affiliates only, retaining Zenith's definition of Affiliates, and do not include contractors or subcontractors in the Representative group unless Acme gives prior written consent; ensure the existing need-to-know and no-less-onerous confidentiality obligation mechanics continue to apply to all Representatives.",
+      "preserve": [
+        "where \"Affiliates\" means entities controlling, controlled by or under common control with a Party",
+        "who have a genuine need to know it for the Purpose",
+        "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement",
+        "The Receiving Party shall be liable for any breach of this Agreement by its Representatives"
+      ],
+      "comment_text": "Counter-proposed Affiliates only — adding contractors and subcontractors materially widens the disclosure perimeter beyond the parties Acme can sensibly monitor."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:8",
+      "comment_text": "Accepted — this is the conforming deletion for Zenith's Clause 7 cross-reference, which is already subject to Acme's liability response below."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:9",
+      "comment_text": "Accepted — Clause 7 already applies generally, and Acme's separate counter-proposal preserves its position on any overbroad exclusion of recoverable losses."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:10",
+      "comment_text": "Accepted — express court orders are a sensible subset of legally compelled disclosures and the notice protection remains."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:11",
+      "comment_text": "Accepted — this is replaced by the court order and competent authority wording without removing the prompt-notice safeguard."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:12",
+      "comment_text": "Accepted — competent governmental or regulatory authority wording is standard for mandatory disclosure requests and remains subject to notice where lawful."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:13",
+      "comment_text": "Accepted as a punctuation change needed to add the independent-development exclusion."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:14",
+      "comment_text": "Accepted — independently developed information is a standard exclusion provided it is developed without use of or reference to Acme's Confidential Information."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:15",
+      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by no restoration or access except for limited purposes and continuing confidentiality."
+    },
+    {
+      "action": "counter_propose",
+      "change_id": "Chg:16",
+      "position": "limit Zenith's broad consequential-loss exclusion so it does not undermine confidentiality remedies",
+      "instruction": "Revise Zenith's added sentence so any exclusion applies only to indirect or consequential loss and expressly does not exclude or limit liability for breach of confidentiality obligations, unauthorised use or disclosure of Confidential Information, or loss of or damage to Confidential Information or data arising from such breach; remove the broad listed heads of loss to the extent they could exclude direct losses.",
+      "preserve": [
+        "Save for liability which cannot be limited or excluded by applicable law,",
+        "the total aggregate liability of each Party to the other under or in connection with this Agreement",
+        "whether in contract, tort (including negligence), breach of statutory duty, or otherwise",
+        "one hundred thousand pounds sterling (GBP 100,000)",
+        "To the extent permitted by applicable law"
+      ],
+      "comment_text": "Counter-proposed — Acme can accept a conventional indirect-loss exclusion but not wording that could strip out direct confidentiality-breach losses or data-related losses."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:17",
+      "comment_text": "Accepted — a separate no-warranty/no-obligation-to-proceed clause is standard NDA architecture and avoids renumbering by using 8A."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:18",
+      "comment_text": "Accepted — as-is, no-warranty and no-obligation-to-proceed wording is standard for an NDA and is subject to the fraud and express-agreement carve-outs."
     }
   ],
   "cross_clause_notes": [
-    "Acme is holding the line on the confidentiality perimeter: Chg:1 narrows what information is protected and Chg:2 broadens who may receive it, so both are counter-proposed while the operational backup carve-out in Chg:3 is accepted."
+    "Zenith's disclosure-scope broadening appears principally in Clause 3, so Acme should counter-propose on Chg:7 while accepting the more mechanical permitted-disclosure cross-reference in Clause 2.",
+    "Zenith has linked Representative liability to Clause 7 and also added a broad consequential-loss exclusion; accepting the former is tolerable because Clause 7 already applies generally, but Chg:16 needs narrowing so confidentiality remedies are not hollowed out."
   ],
   "parse_method": "direct"
 }

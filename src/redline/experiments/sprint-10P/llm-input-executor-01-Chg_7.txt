@@ -99,8 +99,8 @@ The user message names a `preserve` list — phrases that MUST remain present ve
 The senior solicitor will check your output against the preserve list. Edits that drop preserved phrases without a comment explanation will be rejected and reworked.
 
 
-=== USER (len=2584) ===
-Counter-proposal for Chg:2:
+=== USER (len=2590) ===
+Counter-proposal for Chg:7:
   change_type: insertion
   target_text (Zenith's marked text, verbatim):
   >>>
@@ -109,24 +109,23 @@ and its Affiliates, and to its contractors and subcontractors engaged in connect
 
   paragraph_context (the accepted-all view of the paragraph for surrounding context):
   >>>
-The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where "Affiliates" means entities controlling, controlled by or under common control with a Party (together, "Representatives") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.
+The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where "Affiliates" means entities controlling, controlled by or under common control with a Party (together, "Representatives") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.Representatives, subject to the limitations on liability set out in Clause 7.
   <<<
 
 Senior's tactical position:
-  Narrow Zenith's expanded recipient group to Affiliates only and exclude contractors and subcontractors absent consent.
+  narrow Zenith's broadening of the permitted-recipient group to Affiliates only and exclude contractors/subcontractors for now
 
 Senior's drafting instruction:
-  Revise Zenith's insertion so the permitted disclosure wording adds Affiliates and the Affiliate definition, but removes contractors and subcontractors from the automatic permitted-recipient group; keep the Representatives label applying to the approved recipient categories and preserve the need-to-know, confidentiality flow-down and Receiving Party liability protections.
+  Replace Zenith's insertion with a narrower addition permitting disclosure to Affiliates only, retaining Zenith's definition of Affiliates, and do not include contractors or subcontractors in the Representative group unless Acme gives prior written consent; ensure the existing need-to-know and no-less-onerous confidentiality obligation mechanics continue to apply to all Representatives.
 
 Phrases that MUST remain present verbatim in your new_text (preserve list):
-  - "directors, officers, employees, and professional advisers"
   - "where "Affiliates" means entities controlling, controlled by or under common control with a Party"
   - "who have a genuine need to know it for the Purpose"
   - "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement"
-  - "The Receiving Party shall be liable for any breach of this Agreement by its Representatives."
+  - "The Receiving Party shall be liable for any breach of this Agreement by its Representatives"
 
 Optional partner comment (use as part of the `comment` field if helpful):
-  Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor.
+  Counter-proposed Affiliates only — adding contractors and subcontractors materially widens the disclosure perimeter beyond the parties Acme can sensibly monitor.
 
 ---
 

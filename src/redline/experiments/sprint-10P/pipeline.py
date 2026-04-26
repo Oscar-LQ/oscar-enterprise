@@ -312,33 +312,47 @@ def apply_decisions(
     #   fixture; plumbing in place.)
     comment_resolutions: list[tuple[str, str, str | None, str | None]] = []
 
-    # Accept-with-comment: anchor by paragraph_context.
+    # Accept-with-comment: anchor on a stable paragraph PREFIX.
     #
-    # IMPORTANT — paragraph_context comes from Adeu's get_visible_runs +
-    # get_run_text, which include BOTH w:t AND w:delText (the "All Markup"
-    # view: deletions visible as strikethrough). The anchor lookup uses
-    # _get_paragraph_run_text which reads ONLY w:t. They differ on
-    # deletions. After AcceptChange runs on a deletion, the deleted text
-    # is fully removed from the document — for the anchor to match
-    # post-accept, we strip the deleted text from paragraph_context before
-    # passing it to the anchor lookup.
+    # IMPORTANT — paragraph_context (Adeu's get_visible_runs +
+    # get_run_text) includes BOTH w:t AND w:delText (the "All Markup"
+    # view). The anchor lookup uses _get_paragraph_run_text which
+    # reads ONLY w:t. They differ on deletions; after AcceptChange
+    # runs the deleted text is fully removed from the document.
     #
-    # For accept on insertion, paragraph_context's inserted text is in
-    # w:t (inside w:ins) and is preserved post-accept; no transformation
-    # needed.
+    # Naive replace-changed_text-from-paragraph_context fails for
+    # short common deletions (e.g. "Party") that also appear earlier
+    # in the original text — `.replace(d_text, "", 1)` strips the
+    # FIRST occurrence which is original-text, not the deletion's
+    # position. The OOXML tells us where the deletion actually sits;
+    # paragraph_context-as-flat-string does not.
+    #
+    # Robust mechanical fix: anchor on the paragraph's leading prefix
+    # (first ~80 chars trimmed to a word boundary). For substantive
+    # contract paragraphs the leading prefix is in the pre-edit zone
+    # (Zenith's edits typically occur mid-paragraph), so the prefix
+    # is identical in paragraph_context and in the post-accept
+    # document text. Likely unique across the document for §-level
+    # paragraphs, and the substring match in anchor_comment_to_text
+    # widens the comment range to cover the entire matching span.
+    ANCHOR_PREFIX_CHARS = 80
     for d in accept_decisions_in_order:
         comment_text = d.get("comment_text", "").strip()
         if not comment_text:
             continue
         entry = by_change_id[d["change_id"]]
-        anchor_text = entry.paragraph_context
-        if entry.change_type == "deletion" and entry.changed_text:
-            anchor_text = anchor_text.replace(entry.changed_text, "")
-        anchor_text = anchor_text.strip()
+        prefix = entry.paragraph_context[:ANCHOR_PREFIX_CHARS]
+        # Trim to a word boundary so we don't cut mid-word.
+        if (
+            len(entry.paragraph_context) > ANCHOR_PREFIX_CHARS
+            and " " in prefix
+        ):
+            prefix = prefix.rsplit(" ", 1)[0]
+        anchor_text = prefix.strip()
         if not anchor_text:
             comment_resolutions.append((
                 d["change_id"], comment_text, None,
-                f"empty post-accept anchor for {d['change_id']}"
+                f"empty paragraph prefix for {d['change_id']}"
             ))
             continue
         comment_resolutions.append((anchor_text, comment_text, None, None))

@@ -155,7 +155,7 @@ Comments read in Word as Acme's reasoning to the partner and to Zenith. Conventi
 - **You do not draft byte-precise replacement text.** That's the executor's job. Your `instruction` field tells the executor what to draft; your `preserve` list tells it what must remain.
 
 
-=== USER (len=12319) ===
+=== USER (len=28822) ===
 PARTNER'S BRIEF:
 
 Zenith have sent through their redlines on the NDA. We act for Acme. Standard counterparty review — push back where their positions are unreasonable, accept where they're sensible, comment where you need my input. Don't over-mark. Hold the line on the things that matter to us; be flexible on minor commercial points.
@@ -168,12 +168,12 @@ STATE OF PLAY (Zenith's tracked changes on the NDA you previously sent):
   "authors": [
     {
       "name": "Zenith Counsel",
-      "insertion_count": 2,
-      "deletion_count": 1,
+      "insertion_count": 12,
+      "deletion_count": 6,
       "comment_count": 0,
       "earliest_date": "2026-04-26T13:25:32Z",
       "latest_date": "2026-04-26T13:25:32Z",
-      "total_changes": 3
+      "total_changes": 18
     }
   ],
   "changes": [
@@ -183,7 +183,7 @@ STATE OF PLAY (Zenith's tracked changes on the NDA you previously sent):
       "author": "Zenith Counsel",
       "date": "2026-04-26T13:25:32Z",
       "party_role": "unknown",
-      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential. \"Purpose\" means the Parties' evaluation of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
+      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential.that is identified as confidential or that ought reasonably to be understood as confidential by the Receiving Party having regard to its nature and the circumstances of its disclosure. \"Purpose\" means the Parties' evaluationevaluation, negotiation and performance of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
       "changed_text": "whether or not marked or described as confidential.",
       "ooxml_id": "6",
       "replies": []
@@ -194,13 +194,145 @@ STATE OF PLAY (Zenith's tracked changes on the NDA you previously sent):
       "author": "Zenith Counsel",
       "date": "2026-04-26T13:25:32Z",
       "party_role": "unknown",
-      "paragraph_context": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.",
+      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential.that is identified as confidential or that ought reasonably to be understood as confidential by the Receiving Party having regard to its nature and the circumstances of its disclosure. \"Purpose\" means the Parties' evaluationevaluation, negotiation and performance of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
+      "changed_text": "that is identified as confidential or that ought reasonably to be understood as confidential by the Receiving Party having regard to its nature and the circumstances of its disclosure.",
+      "ooxml_id": "7",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:3",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential.that is identified as confidential or that ought reasonably to be understood as confidential by the Receiving Party having regard to its nature and the circumstances of its disclosure. \"Purpose\" means the Parties' evaluationevaluation, negotiation and performance of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
+      "changed_text": "evaluation",
+      "ooxml_id": "8",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:4",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential.that is identified as confidential or that ought reasonably to be understood as confidential by the Receiving Party having regard to its nature and the circumstances of its disclosure. \"Purpose\" means the Parties' evaluationevaluation, negotiation and performance of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
+      "changed_text": "evaluation, negotiation and performance",
+      "ooxml_id": "9",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:5",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "Each Receiving Party shall keep the Disclosing Party's Confidential Information strictly confidential and shall not disclose it to any third party without the prior written consent of the Disclosing PartyParty, except as expressly permitted by this Agreement. The Receiving Party shall use the Confidential Information solely for the Purpose and shall take all reasonable steps to protect the Confidential Information from unauthorised use or disclosure, including steps at least as stringent as those it takes to protect its own confidential information of similar importance.",
+      "changed_text": "Party",
+      "ooxml_id": "15",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:6",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "Each Receiving Party shall keep the Disclosing Party's Confidential Information strictly confidential and shall not disclose it to any third party without the prior written consent of the Disclosing PartyParty, except as expressly permitted by this Agreement. The Receiving Party shall use the Confidential Information solely for the Purpose and shall take all reasonable steps to protect the Confidential Information from unauthorised use or disclosure, including steps at least as stringent as those it takes to protect its own confidential information of similar importance.",
+      "changed_text": "Party, except as expressly permitted by this Agreement",
+      "ooxml_id": "16",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:7",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.Representatives, subject to the limitations on liability set out in Clause 7.",
       "changed_text": "and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party ",
       "ooxml_id": "10",
       "replies": []
     },
     {
-      "change_id": "Chg:3",
+      "change_id": "Chg:8",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.Representatives, subject to the limitations on liability set out in Clause 7.",
+      "changed_text": "Representatives.",
+      "ooxml_id": "11",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:9",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.Representatives, subject to the limitations on liability set out in Clause 7.",
+      "changed_text": "Representatives, subject to the limitations on liability set out in Clause 7.",
+      "ooxml_id": "12",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:10",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, court order, or order of a court of competent jurisdiction,any competent governmental or regulatory authority, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "changed_text": "court order, ",
+      "ooxml_id": "1",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:11",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, court order, or order of a court of competent jurisdiction,any competent governmental or regulatory authority, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "changed_text": "a court of competent jurisdiction,",
+      "ooxml_id": "2",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:12",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, court order, or order of a court of competent jurisdiction,any competent governmental or regulatory authority, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "changed_text": "any competent governmental or regulatory authority,",
+      "ooxml_id": "3",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:13",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, court order, or order of a court of competent jurisdiction,any competent governmental or regulatory authority, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "changed_text": "so.",
+      "ooxml_id": "4",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:14",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, court order, or order of a court of competent jurisdiction,any competent governmental or regulatory authority, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "changed_text": "so; or (e) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information.",
+      "ooxml_id": "5",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:15",
       "change_type": "insertion",
       "author": "Zenith Counsel",
       "date": "2026-04-26T13:25:32Z",
@@ -209,9 +341,42 @@ STATE OF PLAY (Zenith's tracked changes on the NDA you previously sent):
       "changed_text": " Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
       "ooxml_id": "14",
       "replies": []
+    },
+    {
+      "change_id": "Chg:16",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "Save for liability which cannot be limited or excluded by applicable law, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000). To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss, including loss of profit, revenue, business, goodwill, anticipated savings or data, whether or not such loss was foreseeable.",
+      "changed_text": " To the extent permitted by applicable law, neither Party shall be liable to the other for any indirect or consequential loss, including loss of profit, revenue, business, goodwill, anticipated savings or data, whether or not such loss was foreseeable.",
+      "ooxml_id": "13",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:17",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "Nothing in this Agreement grants any licence or right in or to any Confidential Information, patent, copyright, trademark, or other intellectual property right of either Party, whether by implication, estoppel, or otherwise.8A. No Warranty or Obligation to Proceed",
+      "changed_text": "8A. No Warranty or Obligation to Proceed",
+      "ooxml_id": "17",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:18",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The Confidential Information is provided by each Disclosing Party on an \"as is\" basis. Neither Party gives any representation or warranty (express or implied) as to the accuracy, completeness, or fitness for purpose of any Confidential Information disclosed under this Agreement. Neither Party shall have any liability to the other Party for any loss or damage arising from the other Party's use of or reliance on any Confidential Information, save in respect of fraudulent misrepresentation or as expressly set out in this Agreement. Nothing in this Agreement shall oblige either Party to proceed with any transaction, engagement, commercial collaboration, or other arrangement with the other Party.",
+      "changed_text": "The Confidential Information is provided by each Disclosing Party on an \"as is\" basis. Neither Party gives any representation or warranty (express or implied) as to the accuracy, completeness, or fitness for purpose of any Confidential Information disclosed under this Agreement. Neither Party shall have any liability to the other Party for any loss or damage arising from the other Party's use of or reliance on any Confidential Information, save in respect of fraudulent misrepresentation or as expressly set out in this Agreement. Nothing in this Agreement shall oblige either Party to proceed with any transaction, engagement, commercial collaboration, or other arrangement with the other Party.",
+      "ooxml_id": "18",
+      "replies": []
     }
   ],
-  "pending_count": 3
+  "pending_count": 18
 }
 
 ---
