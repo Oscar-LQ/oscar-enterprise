@@ -2578,3 +2578,39 @@ Recommendation: (a) first (cheapest, directly tests the tier hypothesis against 
 **No new ADRs** — no architectural decision was made that warrants one (Adeu version pin is in `requirements.txt`; B1-vs-B2 prompt choice is a tactical sprint variable, not architecture). **No new dependencies.** **No policy widenings.** `requirements.txt` updated for the Adeu version bump only.
 
 **Next sprint picks up from:** (a) Arturs's substantive verdict on `nda-output.docx`; (b) if "good": 10N is Outcome A and the architecture is production-ready for representative briefs — 10O can address open questions (mutual-obligations gap, inline-vs-delegation choice, "minimal Vibe" prompt validation) one at a time; (c) if "not good": 10O scopes against the specific deficiency Arturs identifies, which is a sharper question than the recent arc produced; (d) the feature branch `sprint-10N-real-solicitor-brief` carries the Phase 1 + Phase 3 artefacts including the .docx for review.
+
+**Addendum — diagnostic findings on Phase 3 output (in response to Arturs's two questions).**
+
+*Q1 — comment emission. Finding (b) variant: comments are emitted, parsed, and reach the Adeu boundary, but Oscar's run.py drops them at the pipeline.apply_edits handoff by Vibe-faithful design.* MiniMax emitted comments on all four edits in Phase 3 (verified via `grep '"comment"' llm-output.txt` — 4 hits). All four comments are present in `parsed-edits.json` (lengths 131, 88, 209, 225 chars) and full-text in `adeu-calls.jsonl`. The .docx however contains zero `w:comment`, zero `w:commentReference`, and no `word/comments.xml` part. **Drop point:** `src/redline/experiments/sprint-10N/run.py` lines that re-serialise edits before calling `pipeline.apply_edits`:
+
+```python
+edits_for_pipeline = [
+    {"target_text": e.get("target_text", ""), "new_text": e.get("new_text", "")}
+    for e in edits
+]
+```
+
+The `comment` field is intentionally dropped here, matching `sprint-10M/run.py` (which inherited the pattern from Vibe's `pipeline.py:228-231` — Vibe's app.js handles comment display in its UI separately, so Vibe's pipeline never carries comments through to OOXML). This is **a Vibe-architecture inheritance, not a parser bug or an Adeu integration bug**. The asymmetry I previously claimed (Phase 1 produced comments, Phase 3 produced none) was wrong — Phase 3 produced comments at every stage up to but not including the .docx. Fix is one code change in run.py + adding `ModifyText(comment=...)` keyword to the constructor — straightforward in 10O if Arturs's review confirms comments-in-redline are wanted as a substantive requirement.
+
+*Q2 — clause 4 connector handling. Finding: MiniMax produced the wider target (Q2's second branch — wholesale clause-body rewrite), but `diff_cleanupSemantic` preserved long shared phrasing and produced surgically narrow OOXML.* MiniMax's clause 4 edit:
+
+- `target_text` = the entire 567-char clause-4 body, items (a) through (d) inclusive
+- `new_text` = the entire 701-char restructured clause-4 body with (d)'s "or" connector removed (because (d) is no longer the last item) and a new (e) appended
+
+A narrower edit was available — e.g. (i) `target = "; or (d)"` → `new = "; (d)"` to fix the connector, plus (ii) `target = "to do so."` → `new = "to do so; or (e) is independently developed..."` to append (e) — but MiniMax chose the wider rewrite. Despite this, the resulting OOXML is surgically narrow:
+
+```
+w:del[id=1]  words=1  content='or '
+w:del[id=2]  words=1  content='so.'
+w:ins[id=3]  words=21 content="so; or (e) is independently developed by the Receiving
+                                Party without reference to or use of the Disclosing
+                                Party's Confidential Information."
+```
+
+Total clause-4 redline footprint: 2 words deleted, 21 words inserted. The 360-char common prefix (items (a)/(b)/(c) plus the "; " connector after (c)) was preserved as EQUAL by `diff_cleanupSemantic`, and the (d) body's verbatim presence in both target and new_text held against cleanup. **This is the opposite outcome from 10K/10L's `diff_cleanupSemantic` collapse finding** — there, short scattered shared runs were absorbed into wide DEL+INS; here, one long preserved phrasing run held. The narrowness lever for clause 4 was the LLM producing `new_text` that contains the (d) body verbatim, plus the cleanup pass correctly preserving the (a)/(b)/(c) prefix.
+
+Two implications for future sprints:
+
+(i) **MiniMax's wide-target / narrow-OOXML pattern on clause 4 is a positive cross-sprint data point.** When `target_text` contains long preserved phrasing AND the LLM's `new_text` includes that phrasing verbatim, `diff_cleanupSemantic` produces lawyer-shape narrow OOXML even though the LLM didn't produce a surgical target. This confirms that the narrowness lever is the LLM's drafting-style choice (preserve original phrasing in new_text) more than the LLM's target-sizing choice. Vibe's prompt teaches the former (MISALIGNMENT-RIGHT discipline); the latter is incidental. Future sprints can stop optimising for narrow target spans if the LLM is already preserving phrasing well.
+
+(ii) **The §9 LCIA edit (w:ins[id=5]=68 words) is the structural inverse of clause 4** — there, the LLM's `new_text` (LCIA arbitration paragraph) shares NO phrasing with `target_text` (jurisdiction sentence). diff_cleanupSemantic has nothing to preserve. The 68-word insertion is the irreducible width of the change. If Arturs reviews the §9 redline and finds the 68-word block reads as one logical revision (not noisy), the inline-path-doesn't-leverage-Adeu's-multi-paragraph-as-one-revision behaviour is non-blocking; if it reads as four scattered insertions, the inline-vs-delegation choice from 10M becomes material per the known constraint already documented above.
