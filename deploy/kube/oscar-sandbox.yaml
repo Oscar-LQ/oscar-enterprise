@@ -22,6 +22,20 @@ metadata:
     openshell.ai/managed-by: openshell
 spec:
   podTemplate:
+    metadata:
+      labels:
+        # openshell.ai/sandbox-id is the sandbox's controller-assigned UUID,
+        # used by the OpenShell gateway as the lookup key in its compute
+        # store. The Sandbox CR has this label too, but pods do not
+        # auto-inherit CR labels — we must mirror it onto the podTemplate
+        # so the downward API entry below resolves to the actual UUID.
+        # On a fresh-create deployment via `openshell sandbox create`, the
+        # controller injects OPENSHELL_SANDBOX_ID as a literal env entry;
+        # on kubectl apply (the M2 path), we declare it explicitly here.
+        # This means the manifest is per-instance — for per-tenant
+        # deployments, the label value must be set per client (or templated
+        # in via helm/kustomize). See ADR 025 for the broader pattern.
+        openshell.ai/sandbox-id: 1d2d8f17-7008-4ef7-b31f-67d63cd9f29d
     spec:
       containers:
       - command:
@@ -53,15 +67,6 @@ spec:
               key: secret
         - name: OPENSHELL_SSH_HANDSHAKE_SKEW_SECS
           value: "300"
-        # M2 recovery diagnostic — bumped to debug to surface the
-        # method-level identity of the gRPC call that returns NotFound
-        # at agent startup. Belt-and-braces with RUST_LOG below since
-        # OpenShell components use both env-filter conventions. Drop
-        # back to default (warn) once the recovery is complete.
-        - name: OPENSHELL_LOG_LEVEL
-          value: debug
-        - name: RUST_LOG
-          value: debug
         - name: OPENSHELL_TLS_CA
           value: /etc/openshell-tls/client/ca.crt
         - name: OPENSHELL_TLS_CERT
