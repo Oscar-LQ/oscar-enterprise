@@ -464,6 +464,9 @@ network_policies:
     binaries:
     - path: /sandbox/.venv/bin/python
     - path: /sandbox/.venv/bin/python3
+    - path: /app/.venv/bin/python
+    - path: /app/.venv/bin/python3
+    - path: /sandbox/.uv/python/**
   # AgentMail channel — agentmail Python SDK (outbound WSS to ws.agentmail.to
   # plus REST to api.agentmail.to). See ADR 024.
   agentmail:
@@ -476,3 +479,6 @@ network_policies:
     binaries:
     - path: /sandbox/.venv/bin/python
     - path: /sandbox/.venv/bin/python3
+    - path: /app/.venv/bin/python
+    - path: /app/.venv/bin/python3
+    - path: /sandbox/.uv/python/**

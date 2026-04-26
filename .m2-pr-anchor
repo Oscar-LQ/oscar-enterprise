@@ -1,0 +1,3 @@
+This file exists solely to anchor the M2 draft coordination pull request — GitHub PRs require at least one commit difference between head and base, and Phase 0 doesn't otherwise add any code on the feature branch (per spec: docs go to main directly). Will be deleted in Phase 1's first commit on this branch, when the channel framework files supersede it.
+
+Tracked: docs/sprints/M2-preflight.md (on main, commit eddec81).

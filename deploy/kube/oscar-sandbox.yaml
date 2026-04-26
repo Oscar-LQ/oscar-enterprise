@@ -1,0 +1,150 @@
+# Sandbox CR for the per-tenant oscar-dev sandbox.
+#
+# Reconciled by the agent-sandbox controller (kind: Sandbox,
+# agents.x-k8s.io/v1alpha1) into the per-sandbox Pod, Service, and PVC
+# the OpenShell runtime needs.
+#
+# This file is the portable template for fresh-create deployments.
+# OPENSHELL_SANDBOX_ID and OPENSHELL_SSH_HANDSHAKE_SECRET are declared
+# explicitly via downward API (label) and secretKeyRef respectively, so
+# the manifest survives kubectl-apply-driven updates. See ADR 025 —
+# apply_required_env runs only on Sandbox-CR-create, not on reconciles
+# from updates.
+#
+# main-VPS Claude Code coordinates the kubectl apply; sandbox-Claude-
+# Code does not apply this file directly.
+apiVersion: agents.x-k8s.io/v1alpha1
+kind: Sandbox
+metadata:
+  name: oscar-dev
+  namespace: openshell
+  labels:
+    openshell.ai/managed-by: openshell
+spec:
+  podTemplate:
+    metadata:
+      labels:
+        # openshell.ai/sandbox-id is the sandbox's controller-assigned UUID,
+        # used by the OpenShell gateway as the lookup key in its compute
+        # store. The Sandbox CR has this label too, but pods do not
+        # auto-inherit CR labels — we must mirror it onto the podTemplate
+        # so the downward API entry below resolves to the actual UUID.
+        # On a fresh-create deployment via `openshell sandbox create`, the
+        # controller injects OPENSHELL_SANDBOX_ID as a literal env entry;
+        # on kubectl apply (the M2 path), we declare it explicitly here.
+        # This means the manifest is per-instance — for per-tenant
+        # deployments, the label value must be set per client (or templated
+        # in via helm/kustomize). See ADR 025 for the broader pattern.
+        openshell.ai/sandbox-id: 1d2d8f17-7008-4ef7-b31f-67d63cd9f29d
+    spec:
+      containers:
+      - command:
+        - /opt/openshell/bin/openshell-sandbox
+        env:
+        - name: OPENSHELL_SANDBOX
+          value: oscar-dev
+        # SANDBOX_ID is read from the controller-managed sandbox-id
+        # label via the downward API, so the manifest stays portable
+        # across per-client deployments. See ADR 025.
+        - name: OPENSHELL_SANDBOX_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['openshell.ai/sandbox-id']
+        - name: OPENSHELL_ENDPOINT
+          value: https://openshell.openshell.svc.cluster.local:8080
+        - name: OPENSHELL_SANDBOX_COMMAND
+          value: sleep infinity
+        - name: OPENSHELL_SSH_LISTEN_ADDR
+          value: 0.0.0.0:2222
+        # HANDSHAKE_SECRET is sourced from the openshell-ssh-handshake
+        # Secret in the same namespace (created by `openshell gateway
+        # start`'s bootstrap and persistent across pod recreation). See
+        # ADR 025.
+        - name: OPENSHELL_SSH_HANDSHAKE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: openshell-ssh-handshake
+              key: secret
+        - name: OPENSHELL_SSH_HANDSHAKE_SKEW_SECS
+          value: "300"
+        - name: OPENSHELL_TLS_CA
+          value: /etc/openshell-tls/client/ca.crt
+        - name: OPENSHELL_TLS_CERT
+          value: /etc/openshell-tls/client/tls.crt
+        - name: OPENSHELL_TLS_KEY
+          value: /etc/openshell-tls/client/tls.key
+        image: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
+        name: agent
+        securityContext:
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - NET_ADMIN
+            - SYS_PTRACE
+            - SYSLOG
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /etc/openshell-tls/client
+          name: openshell-client-tls
+          readOnly: true
+        - mountPath: /opt/openshell/bin
+          name: openshell-supervisor-bin
+          readOnly: true
+        - mountPath: /sandbox
+          name: workspace
+        # Sprint M2: OSCAR_* secrets sourced from the host-managed
+        # /etc/oscar/oscar.env via Kubernetes Secret-as-volume (ADR 025).
+        # The runtime config loader (src/shared/secrets.py) reads the
+        # mounted file at startup.
+        - mountPath: /etc/oscar
+          name: oscar-secrets
+          readOnly: true
+      hostAliases:
+      - hostnames:
+        - host.docker.internal
+        - host.openshell.internal
+        ip: 172.17.0.1
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - if [ ! -f /workspace-pvc/.workspace-initialized ]; then if [ -d /sandbox
+          ]; then tar -C /sandbox -cf - . | tar -C /workspace-pvc -xpf -; fi && touch
+          /workspace-pvc/.workspace-initialized; fi
+        image: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
+        name: workspace-init
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /workspace-pvc
+          name: workspace
+      volumes:
+      - name: openshell-client-tls
+        secret:
+          defaultMode: 256
+          secretName: openshell-client-tls
+      - hostPath:
+          path: /opt/openshell/bin
+          type: DirectoryOrCreate
+        name: openshell-supervisor-bin
+      # Sprint M2 (ADR 025): the oscar-runtime-secrets Secret in the
+      # openshell namespace is created and refreshed by main-VPS Claude
+      # Code from /etc/oscar/oscar.env on the host. Single key
+      # `oscar.env` exposed at /etc/oscar/oscar.env inside the sandbox.
+      # `items:` is explicit (Kubernetes would default to the same
+      # filename) so the manifest documents the contract.
+      - name: oscar-secrets
+        secret:
+          secretName: oscar-runtime-secrets
+          items:
+          - key: oscar.env
+            path: oscar.env
+  volumeClaimTemplates:
+  - metadata:
+      name: workspace
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi

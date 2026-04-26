@@ -1,0 +1,44 @@
+# Slack app manifest for the General Counsel bot.
+#
+# Load via https://api.slack.com/reference/manifests "Create from manifest".
+# Workspace-scoped (no distribution required for M2; one workspace per
+# tenant per Oscar's per-VPS deployment model). Socket Mode is enabled so
+# the sandbox makes outbound WSS only — no public endpoint required.
+#
+# Phase 2A of Sprint M2.
+#
+# After load, the workspace admin generates:
+#   - xoxb- bot token (Install App)         → OSCAR_SLACK_BOT_TOKEN
+#   - xapp- app-level token, "connections:write" scope → OSCAR_SLACK_APP_TOKEN
+# Both land in /etc/oscar/oscar.env on the host (ADR 025), exposed read-only
+# to the sandbox via bind-mount.
+
+display_information:
+  name: Oscar General Counsel
+  description: In-house legal AI agent — mention me to delegate legal work.
+  background_color: "#0b1220"
+
+features:
+  bot_user:
+    display_name: Oscar GC
+    always_online: true
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: false
+    messages_tab_read_only_enabled: true
+
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
