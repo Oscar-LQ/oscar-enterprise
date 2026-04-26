@@ -44,6 +44,12 @@ When behavioural rules are added to a sprint after Phase 0 research is written, 
 
 ---
 
+## [Redline] MCP Dual-ID Pattern: ooxml_id for Adeu Wiring, Chg:N for Display
+
+MCP's dual-ID pattern (Chg:N for LLM display, ooxml_id for Adeu wiring) is load-bearing. Anywhere Oscar passes change identifiers between planner output and Adeu calls, use ooxml_id. Chg:N is display-only and renumbers across operations. (Banked from 10P Phase 2: silent failure mode caught at smoke-test.)
+
+---
+
 ## Multi-Track Discipline
 
 Oscar is developed across multiple parallel tracks. Current: **Redline** (10-series sprints) and **CoSec** (C-series). Infrastructure sprints spanning tracks use the **M-series**. The Sprint Index in `PROJECT.md` shows all three. Established by Sprint M1.
