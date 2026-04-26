@@ -5,9 +5,11 @@
 # the OpenShell runtime needs.
 #
 # This file is the portable template for fresh-create deployments.
-# Per-instance fields the controller injects at create time are
-# deliberately absent (sandbox-id label, OPENSHELL_SANDBOX_ID env,
-# OPENSHELL_SSH_HANDSHAKE_SECRET env). See ADR 025 for rationale.
+# OPENSHELL_SANDBOX_ID and OPENSHELL_SSH_HANDSHAKE_SECRET are declared
+# explicitly via downward API (label) and secretKeyRef respectively, so
+# the manifest survives kubectl-apply-driven updates. See ADR 025 —
+# apply_required_env runs only on Sandbox-CR-create, not on reconciles
+# from updates.
 #
 # main-VPS Claude Code coordinates the kubectl apply; sandbox-Claude-
 # Code does not apply this file directly.
@@ -25,17 +27,30 @@ spec:
       - command:
         - /opt/openshell/bin/openshell-sandbox
         env:
-        # OPENSHELL_SANDBOX_ID and OPENSHELL_SSH_HANDSHAKE_SECRET are
-        # injected per-instance by the agent-sandbox controller; they
-        # are deliberately absent from this template (ADR 025).
         - name: OPENSHELL_SANDBOX
           value: oscar-dev
+        # SANDBOX_ID is read from the controller-managed sandbox-id
+        # label via the downward API, so the manifest stays portable
+        # across per-client deployments. See ADR 025.
+        - name: OPENSHELL_SANDBOX_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['openshell.ai/sandbox-id']
         - name: OPENSHELL_ENDPOINT
           value: https://openshell.openshell.svc.cluster.local:8080
         - name: OPENSHELL_SANDBOX_COMMAND
           value: sleep infinity
         - name: OPENSHELL_SSH_LISTEN_ADDR
           value: 0.0.0.0:2222
+        # HANDSHAKE_SECRET is sourced from the openshell-ssh-handshake
+        # Secret in the same namespace (created by `openshell gateway
+        # start`'s bootstrap and persistent across pod recreation). See
+        # ADR 025.
+        - name: OPENSHELL_SSH_HANDSHAKE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: openshell-ssh-handshake
+              key: secret
         - name: OPENSHELL_SSH_HANDSHAKE_SKEW_SECS
           value: "300"
         - name: OPENSHELL_TLS_CA
