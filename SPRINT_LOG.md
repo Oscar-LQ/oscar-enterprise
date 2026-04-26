@@ -2913,7 +2913,29 @@ Mechanical results:
 
 (iii) **The `--cache` flag in `run.py` is a useful re-apply seam for any future iteration on dispatcher fixes** without burning new LLM credits. Probably worth promoting to a more general harness pattern across future sprints.
 
-**Substantive verdict (Arturs's review of `nda-output.docx`):** TBD. *To be appended when received. Five questions to assess: (1) does the 18-decision redline read as partner-quality counterparty review in Word's Reviewing Pane (multi-author visibility; substantive comment anchoring; counter-propose layering on §3 and §7)? (2) is the planner's call to accept §1's reasonable-understanding narrowing (Chg:1+2 paired) — defensible at 18-change scale where Acme picks fights — substantively right? (3) are the two counter-proposes (Chg:7 disclosure-scope narrowing; Chg:16 consequential-loss narrowing with confidentiality carve-out) substantively right? (4) do the 18 comments read as partner-shape (substantive, not procedural)? (5) does the cross_clause_notes Chg:7↔Chg:16 connection land as a meaningful planner observation?*
+**Substantive verdict (Arturs's review of `nda-output.docx`):** **Production-acceptable.** The architecture and cognitive layer both deliver at 18-change scale.
+
+- **Comment quality holds partner-shape across all 18 decisions; not one placeholder.** Each comment is one-sentence, substantive, names the specific reasoning. Strongest cognitive-layer finding from the run.
+
+- **Cross-clause reasoning operates coherently.** The §3↔§7 cross-reference chain (accept §3's reference to §7 because §7 is being countered separately on Chg:16) shows the planner making paired decisions on related changes rather than treating each in isolation.
+
+- **Distribution (16 accept / 2 counter_propose / 0 no_action) reflects calibrated accommodating posture.** The two counter-proposals hit the substantively important issues — §3 disclosure perimeter, §7 confidentiality-breach liability. Both calibrated correctly. The accommodating posture on the other 16 is defensible reading of the brief's "be flexible on minor commercial points; hold the line on what matters."
+
+- **Chg:1 drift between 2.3 and 3.1** (counter-propose → accept on the same input) is a meaningful finding about non-determinism on borderline calls. **Calibration finding, not a bug.** GPT-5.5 non-Pro's calibration on borderline cases varies across runs; production users should expect two runs of the same input may produce different defensible decisions on borderline cases. Senior solicitor's review remains load-bearing.
+
+- **Phase 3.0 restore shape from the gate fix was NOT exercised under real LLM in 3.1.** Smoke-test stands as verification. If exercising the restore shape under real LLM is wanted as a separate confirmation, that's a future deliberate test (e.g., a brief that signals "restore Acme's original positions where Zenith narrowed").
+
+- **Two counter-proposal substantive reads:**
+  - **§3 (Chg:7):** pure-narrowing nested-strike shape; clean middle-ground result (Affiliates auto, contractors require consent). Calibrated.
+  - **§7 (Chg:16):** wholesale wrap shape with sibling Acme w:ins; carves out confidentiality-breach losses from the indirect-loss exclusion. Calibrated correctly — without this carve-out, Zenith's exclusion would gut Acme's enforcement ability.
+
+- **Non-determinism observation suggests production work would benefit from a second-pass review** (planner reviews its own output for consistency) or human partner review. Neither is a blocker for production deployment.
+
+**Sprint 10P closes.** The redline track has covered: 10N first-pass single-shot redlining; 10O planner-executor for first-pass with preserve discipline; 10P-prep architecture portability when client side flips; 10P counterparty response with layered tracked changes, comments, two-author OOXML, three valid counter-propose shapes (surgical with shared prefix, wholesale wrap, pure-narrowing nested-strike).
+
+The redline track is in **production-ready state at the capability layer**. Production-readying work (RBAC, audit traceability, bias testing, live deployment) is separate from capability work and outside the redline track's scope.
+
+**Next sprint moves to the billing track** per Arturs's direction.
 
 **No new ADRs.** No new dependencies. No policy widenings. `.env.example` unchanged. `requirements.txt` unchanged.
 
