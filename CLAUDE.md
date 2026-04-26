@@ -53,6 +53,12 @@ Oscar is developed across multiple parallel tracks. Current: **Redline** (10-ser
 
 ---
 
+## Redline Track Discipline
+
+- **Surface output artefacts at sprint end.** Commit and push the produced `.docx` (and any other reviewable output) to the sprint's feature branch and include the GitHub download URLs in the SPRINT_LOG entry. The lawyer reviews the document, not the metrics — span counts, diff widths, and acceptance rates do not substitute for reading the actual redline.
+
+---
+
 ## Architecture & Design
 
 ### Classes for Stateful Services
