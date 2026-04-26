@@ -38,6 +38,12 @@ When a sprint involves porting a pattern from another codebase that depends on a
 
 ---
 
+## [Redline] [Process] Re-derive Phase 0 Findings Against New Behavioural Rules
+
+When behavioural rules are added to a sprint after Phase 0 research is written, re-derive the research's implications against the new rules — don't assume equivalent. Phase 0 finds hold to the rules they were written under; new rules may demand new port surface. (Banked from 10P Phase 0: rule 4 added ~700 LoC of port surface that the feasibility note predated.)
+
+---
+
 ## Multi-Track Discipline
 
 Oscar is developed across multiple parallel tracks. Current: **Redline** (10-series sprints) and **CoSec** (C-series). Infrastructure sprints spanning tracks use the **M-series**. The Sprint Index in `PROJECT.md` shows all three. Established by Sprint M1.
