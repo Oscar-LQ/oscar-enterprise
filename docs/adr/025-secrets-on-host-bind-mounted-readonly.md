@@ -43,3 +43,51 @@ The Phase 0 addendum's "bind-mount" terminology is now architectural shorthand. 
 
 - **Per-client `metadata.name`.** The committed manifest hard-codes `name: oscar-dev` (the current sandbox's name). M3+ per-client deployments will need to either copy-and-rename the file or template it (e.g. via Kustomize or Helm). Out of M2 scope; flagged so the next sprint that touches deployment doesn't get surprised.
 - **Secret rotation cadence.** Kubelet refreshes the projected Secret within ~60s; the runtime config loader reads only at startup. A token rotation therefore requires a sandbox restart to take effect inside the runtime process. M3+ may add a SIGHUP-style re-load if this becomes painful.
+
+## Lessons learned
+
+Recorded after Sprint M2 Phase 2's recovery cascade — roughly three hours of "the mechanism reports success but the behaviour differs" failures against OpenShell v0.0.32. The findings below are the architectural lessons that future operators of Sandbox CRs, OPA policy enforcement, and Slack bot deployments will want before they start, not after. Grouped by category for readability; each entry stands on its own.
+
+### OpenShell controller behaviour
+
+- **Required env vars are injected at construction, not on update.** `apply_required_env` (`driver.rs:1272-1310`) runs only on pod-template construction at Sandbox-CR-create time. It does not re-fire on reconcile-from-update. Sandbox CR manifests must therefore declare every required env var explicitly via `valueFrom` references — relying on the controller to "fill in the rest" works on the create path and silently fails on every subsequent edit path.
+
+- **Controller behaviour cannot be inferred from test or function names.** The OpenShell test `apply_required_env_always_injects_ssh_handshake_secret` describes a construction-path invariant only, despite the word "always" in its name. Verify against runtime evidence (pod spec, agent logs), not against source-name semantics. The same caution applies generally — read the code path you are invoking, not the name of the test that exercises it.
+
+- **Pods do not auto-inherit Sandbox CR labels.** Labels on the CR's `metadata.labels` do not propagate to the pod. Anything the agent or its tooling reads via downward API (the canonical example is `openshell.ai/sandbox-id`, sourced from the label of the same name) must be mirrored explicitly onto `spec.podTemplate.metadata.labels` in the manifest. Without that mirror, downward API references resolve to empty and the agent fails to start with no clear error pointing at the missing label.
+
+- **Sandbox CRs at v0.0.32 are effectively immutable in production.** A direct `kubectl apply` against an existing CR will succeed for spec changes, but it bypasses the controller's bootstrap path — meaning the construction-time injections (above) do not re-run, and the apparent change does not match runtime behaviour. The supported edit path is recreation via the `openshell sandbox` CLI, not direct `kubectl apply`. Treat the manifest in `deploy/kube/oscar-sandbox.yaml` as a template for fresh creates, not as a live-edit surface.
+
+### OpenShell gateway and policy behaviour
+
+- **Sandbox identity is keyed by UUID, not by name.** The gateway's compute store keys Sandbox records by `id` (UUID). Agent identity propagates via the `OPENSHELL_SANDBOX_ID` env var, sourced from the `openshell.ai/sandbox-id` label via downward API. The `OPENSHELL_SANDBOX` env var (the name) is for human-readable identity only — gateway lookups don't use it. Both env vars must be present for the agent to start; missing the ID-by-UUID one produces a NotFound at the gateway with no obvious connection back to the missing label.
+
+- **Watch-stream flapping is baseline, not a fault.** The gateway's watch stream renews every ~30s with WARN-level reconnect logs. This is the documented v0.0.32 lifecycle, not a symptom of misconfiguration. Reconnects complete within ~2s and events are delivered between renewals. Ignore the noise; do not treat it as a recovery signal.
+
+- **Policy redeploy is non-destructive and hot-reloads.** `openshell policy set --policy <file> --wait` reloads the running agent's OPA engine without a pod restart. The gateway's `policy_history` sqlite table is the **runtime source of truth**; the repo path under `policies/` is the template plus version-control trail. The two are reconciled only by operator-driven `openshell policy set` calls — there is no continuous reconciliation loop. A repo edit alone changes nothing at runtime.
+
+### OpenShell policy file conventions
+
+- **Binary identity is matched on the canonical path, not on symlinks.** The OPA engine determines binary identity by canonicalising `/proc/<pid>/exe` through symlink resolution. Symlink-only entries in `binaries:` lists do not match callers — the engine matches against the canonical target. The canonical path (or a covering glob such as `/sandbox/.uv/python/**`) must therefore be present alongside any symlink path. M2 hit this when adding the Slack and AgentMail egress blocks: only `/sandbox/.venv/bin/python` (a symlink to `/sandbox/.uv/python/cpython-3.13-…/bin/python3.13`) was listed. All Python-originated outbound was denied at the proxy until the canonical glob was added — fix at commit `2dc1a6b`. Mirror the pattern that already works in the established `minimax` block: list both the symlink and the canonical glob.
+
+- **Wildcard syntax is `*.<domain>` for subdomains.** The single-asterisk form `*.<domain>` matches subdomains and is validated by `validate_accepts_subdomain_wildcard`. The double-asterisk form `**.<domain>` is also accepted for non-TLD domains, but `**.<tld>` (e.g. `**.org`) is explicitly rejected. M2's first attempt used `*.slack.com`, which works; commit `0f6b93e` switched to `**.slack.com` for consistency with the WSS-host shape. Either is correct for `.slack.com`; choose one and apply it consistently.
+
+- **The policy loader fails silently on malformed entries.** The loader drops or normalises entries it cannot parse, without surfacing the error on any operator-visible surface. The gateway returns a `Loaded` status to `openshell policy set` even when the policy is effectively degraded. Pre-deploy validation against OpenShell's conventions, **and** post-deploy enforcement testing (e.g. `curl` through the proxy to a known-allowed and a known-denied host), are both required. Trusting the `Loaded` status alone has caused real Phase 2 time loss.
+
+### Operational discipline
+
+- **Sandbox state is cache; only committed git state is durable.** Sandbox sessions are ephemeral. Sandbox-Claude-Code's working memory, in-flight uncommitted edits, and any local debug artefacts are lost when the sandbox crashes or its SSH session drops. The discipline that follows is: commit early, commit often, push to the remote on every commit, and treat anything outside `git push origin <branch>` as work that has not yet happened.
+
+- **Operational policy must be on the feature branch HEAD before any deploy or runtime test.** Cross-sprint policy changes that affect runtime behaviour — egress rules, secrets paths, security-sensitive config — live on `main` per governance discipline (CLAUDE.md § Git Discipline), but the deploy or runtime test reads from the feature branch's working tree. Forgetting to pull `main` into the feature branch before deploy is the shape of a Phase 2 stall: the policy change exists in the repo but does not reach the running gateway. The "pull main into feature branch before deploy" step belongs in the runbook for any sprint that modifies operational policy.
+
+- **Sprint 3's in-sandbox `.env` is not the right pattern for production credentials.** The `.env` carrier served prototype work — it lives in the sandbox writable overlay, with no separation between "secret" and "developer-local config", and no host-side rotation story. M2's secrets-on-host pattern subsumes it: LLM credentials migrated from `/sandbox/oscar-enterprise/.env` to `/etc/oscar/oscar.env` at the end of Phase 2 to maintain a single secrets source of truth. Future sprints should migrate the redline and CoSec entry points to `load_host_secrets()` as well, completing the pattern.
+
+### Slack-app provisioning checklist
+
+For future bot deployments. Slack's app-creation UX is shaped around the listener's request URL flow; Socket Mode plus `app_mention`-only requires a few steps that the default flow does not produce.
+
+- **Bot Token Scopes must include both `app_mentions:read` and `chat:write`.** Slack adds `app_mentions:read` automatically when the app is configured to receive `app_mention` events but does **not** add `chat:write` by default — an app that can hear mentions but cannot reply to them is a common provisioning miss. Add `chat:write` explicitly.
+
+- **The app-level token (`xapp-`) is separate from the bot user token (`xoxb-`).** Socket Mode's handshake uses the app-level token (scope `connections:write`); `chat.postMessage` uses the bot user token. They are issued and rotated independently. OAuth scope changes affect the bot user token; the app-level token is unaffected.
+
+- **Reinstall does not always rotate `xoxb-`.** Slack preserves the existing bot user token across reinstalls when the scope change is purely additive — the existing token stays valid and gains the new server-side permissions. A scope reduction or other non-additive change does rotate. The implication for ops: do not assume a reinstall produces a fresh token to copy into `/etc/oscar/oscar.env`; check whether the token actually changed before triggering a sandbox restart for the rotation.
