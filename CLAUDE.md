@@ -50,6 +50,12 @@ MCP's dual-ID pattern (Chg:N for LLM display, ooxml_id for Adeu wiring) is load-
 
 ---
 
+## [Process] [Architecture] Deep Agents Is Reference Material, Not Runtime
+
+Oscar's runtime does not use Deep Agents. The library is present in the venv as reference material for surface checks (e.g., `SubAgent.model` assignment in 10O Phase 0; `MemoryMiddleware` in 10Q Phase 0), but the pipeline since 10I uses direct `chat_model.invoke()` with stdlib infrastructure. Future research that surfaces a Deep Agents primitive should evaluate whether it fits Oscar's runtime philosophy before recommending adoption. (Banked from 10Q Phase 0: `MemoryMiddleware` would have violated the client-driven playbook constraint via its `edit_file` self-update prompt template.)
+
+---
+
 ## Multi-Track Discipline
 
 Oscar is developed across multiple parallel tracks. Current: **Redline** (10-series sprints) and **CoSec** (C-series). Infrastructure sprints spanning tracks use the **M-series**. The Sprint Index in `PROJECT.md` shows all three. Established by Sprint M1.
