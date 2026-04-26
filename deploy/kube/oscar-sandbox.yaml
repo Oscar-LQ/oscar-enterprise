@@ -53,6 +53,15 @@ spec:
               key: secret
         - name: OPENSHELL_SSH_HANDSHAKE_SKEW_SECS
           value: "300"
+        # M2 recovery diagnostic — bumped to debug to surface the
+        # method-level identity of the gRPC call that returns NotFound
+        # at agent startup. Belt-and-braces with RUST_LOG below since
+        # OpenShell components use both env-filter conventions. Drop
+        # back to default (warn) once the recovery is complete.
+        - name: OPENSHELL_LOG_LEVEL
+          value: debug
+        - name: RUST_LOG
+          value: debug
         - name: OPENSHELL_TLS_CA
           value: /etc/openshell-tls/client/ca.crt
         - name: OPENSHELL_TLS_CERT
