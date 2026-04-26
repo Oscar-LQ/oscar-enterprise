@@ -1,0 +1,21 @@
+
+=== Sprint 10O Phase 3 | planner=openrouter/openai/gpt-5.5 | executor=minimax/MiniMax-M2.7 | started 2026-04-26T07:41:19.151641+00:00 ===
+planner=openrouter/openai/gpt-5.5 | executor=minimax/MiniMax-M2.7
+plan: parse_method=direct | instructions=4 | executed=4 | skipped_executor=0
+executor parse_methods: {'direct': 4}
+cross_clause_notes_count: 4
+applied=4 | skipped_apply=0
+verify_output:
+  exists: /sandbox/oscar-enterprise/src/redline/experiments/sprint-10O/nda-output.docx (39363 bytes)
+  valid zip with 17 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=6, w:del=5
+  INFO: w:ins[id=1] span=35 words (>20)
+  INFO: w:ins[id=5] span=25 words (>20)
+  INFO: w:ins[id=3] span=23 words (>20)
+  INFO: w:ins[id=7] span=53 words (>50)
+  INFO: w:ins[id=11] span=22 words (>20)
+  INFO: w:del[id=6] span=24 words (>20)
+  SPOT-CHECK OK: litigation phrase preserved in w:delText.
+
+finished=2026-04-26T07:43:21.674736+00:00 | elapsed_seconds=122.5

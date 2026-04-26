@@ -1,0 +1,64 @@
+{
+  "plan": [
+    {
+      "id": "p1",
+      "clause": "3",
+      "position": "Allow permitted disclosure to the Receiving Party's group companies, but only on the same need-to-know and confidentiality terms as existing permitted recipients.",
+      "instruction": "Amend Clause 3 by expanding the permitted recipient class in the first sentence to include the Receiving Party's group companies and, if appropriate for drafting clarity, their respective directors, officers, employees and professional advisers. Keep them within the same defined recipient concept so that the existing confidentiality undertaking and Receiving Party liability provisions apply to them. Do not create an unrestricted group-wide disclosure right.",
+      "preserve": [
+        "directors, officers, employees, and professional advisers",
+        "who have a genuine need to know it for the Purpose",
+        "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement",
+        "The Receiving Party shall be liable for any breach of this Agreement by its Representatives."
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p2",
+      "clause": "4",
+      "position": "Add independent development to the confidentiality exclusions.",
+      "instruction": "Amend Clause 4 to add a new exclusion for information independently developed by or on behalf of the Receiving Party without use of or reference to the Disclosing Party's Confidential Information. Insert it as an additional limb in the existing list, preferably before the compelled disclosure limb, and adjust lettering/punctuation only as needed.",
+      "preserve": [
+        "(a) is or becomes publicly available other than through a breach of this Agreement",
+        "(b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure",
+        "(c) is lawfully obtained from a third party without breach of any obligation of confidence",
+        "is required to be disclosed by law, regulation, or order of a court of competent jurisdiction",
+        "provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p3",
+      "clause": "7",
+      "position": "The liability cap is acceptable in principle, but fraud, wilful misconduct and breaches of confidentiality obligations must be uncapped.",
+      "instruction": "Amend Clause 7 so that the GBP 100,000 aggregate cap does not apply to liability arising from fraud, wilful misconduct, or breach of the confidentiality obligations under this Agreement. Structure the clause so the existing mandatory-law carve-out remains intact and the cap continues to apply to other claims.",
+      "preserve": [
+        "Save for liability which cannot be limited or excluded by applicable law",
+        "the total aggregate liability of each Party to the other under or in connection with this Agreement",
+        "whether in contract, tort (including negligence), breach of statutory duty, or otherwise",
+        "one hundred thousand pounds sterling (GBP 100,000)"
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    },
+    {
+      "id": "p4",
+      "clause": "9",
+      "position": "Keep English governing law but replace court litigation with LCIA arbitration seated in London.",
+      "instruction": "In Clause 9, leave the first sentence on governing law unchanged. Replace only the second sentence, currently submitting disputes to the exclusive jurisdiction of the courts of England and Wales, with an LCIA arbitration clause providing that disputes are finally resolved under the LCIA Rules, the seat of arbitration is London, there is a sole arbitrator, the language of the arbitration is English, and the award is final and binding.",
+      "preserve": [
+        "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales."
+      ],
+      "comment_for_partner": "",
+      "depends_on": []
+    }
+  ],
+  "cross_clause_notes": [
+    "The draft is already framed as mutual in the title, party definitions, Confidential Information definition, Clause 2 obligations, Clause 3 permitted disclosures, Clause 6 return/destruction, Clause 7 liability cap, and Clause 8 no licence. I have not proposed cosmetic mutuality edits where the operative effect is already reciprocal.",
+    "The Purpose definition refers to a potential commercial collaboration relating to Zenith supplying services to Acme. That is commercially asymmetric but does not itself make the confidentiality obligations one-way, so I have left it unchanged absent a broader commercial instruction.",
+    "Clause 5 already provides that confidentiality obligations survive termination for a further period of three years, which satisfies the instruction that confidentiality should survive for three years after termination, not less.",
+    "I have limited the mark-up to the partner's substantive asks and have not added speculative provisions such as injunctive relief, assignment restrictions, or notices machinery."
+  ]
+}

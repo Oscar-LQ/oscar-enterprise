@@ -1,0 +1,7 @@
+```json
+{
+  "target_text": "; or (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.",
+  "new_text": "; (d) is independently developed by or on behalf of the Receiving Party without use of or reference to the Disclosing Party's Confidential Information; or (e) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.",
+  "comment": "Per planner instruction p2 — inserts new independent development exclusion as clause 4(d) and renumbers existing compelled disclosure limb to 4(e)."
+}
+```
