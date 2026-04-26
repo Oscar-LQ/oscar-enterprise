@@ -184,3 +184,13 @@ def _inbound_message_from(msg: Message) -> InboundMessage:
         text=text.strip(),
         raw=msg.model_dump(),
     )
+
+
+# Load-time Channel Protocol conformance assertion (matches the pattern in
+# fake.py; AgentMailChannel needs credentials to construct so we use __new__
+# to bypass __init__ — runtime_checkable Protocol checks for method presence
+# on the instance, which class-level methods satisfy).
+assert isinstance(AgentMailChannel.__new__(AgentMailChannel), Channel), (
+    "AgentMailChannel does not implement the Channel Protocol; "
+    "check that start, stop, post_message, on_inbound_message all exist."
+)

@@ -184,3 +184,13 @@ def _find_break(text: str, soft_limit: int) -> int:
     if word != -1 and word >= soft_limit // 2:
         return word
     return soft_limit  # hard cut — preserves single very-long token
+
+
+# Load-time Channel Protocol conformance assertion (matches the pattern in
+# fake.py; SlackChannel needs credentials to construct so we use __new__ to
+# bypass __init__ — runtime_checkable Protocol checks for method presence
+# on the instance, which class-level methods satisfy).
+assert isinstance(SlackChannel.__new__(SlackChannel), Channel), (
+    "SlackChannel does not implement the Channel Protocol; "
+    "check that start, stop, post_message, on_inbound_message all exist."
+)
