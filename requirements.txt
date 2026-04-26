@@ -1,4 +1,4 @@
-adeu==1.1.0
+adeu==1.3.3
 aiofile==3.9.0
 annotated-types==0.7.0
 anthropic==0.96.0
