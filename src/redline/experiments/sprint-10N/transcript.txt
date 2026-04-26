@@ -1,0 +1,18 @@
+
+=== Sprint 10N Phase 3 | provider=minimax | model=MiniMax-M2.7 | started 2026-04-26T06:53:05.535428+00:00 ===
+provider=minimax model=MiniMax-M2.7
+parse_method=direct | source_key=changes
+edits_returned=4 | applied=4 | skipped=0
+reasoning_present=False
+verify_output:
+  exists: /sandbox/oscar-enterprise/src/redline/experiments/sprint-10N/nda-output.docx (39318 bytes)
+  valid zip with 17 parts
+  parsed OK (root tag: document)
+  tracked changes: w:ins=6, w:del=5
+  INFO: w:ins[id=3] span=21 words (>20)
+  INFO: w:ins[id=11] span=25 words (>20)
+  INFO: w:ins[id=5] span=68 words (>50)
+  INFO: w:del[id=4] span=29 words (>20)
+  SPOT-CHECK OK: litigation phrase 'exclusive jurisdiction of the courts of England and Wales' is preserved in w:delText.
+
+finished=2026-04-26T06:53:36.592113+00:00 | elapsed_seconds=31.1

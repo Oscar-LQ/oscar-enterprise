@@ -1,0 +1,30 @@
+[
+  {
+    "rule": "",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement.",
+    "new_text": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers (together, \"Representatives\") and to any member of its corporate group for the Purpose, provided that the Receiving Party procures that each such Representative and each such group member is bound by obligations of confidentiality no less onerous than those set out in this Agreement.",
+    "comment": "Added disclosure to group companies — mutual position requires this to be symmetrical (both parties can share within their groups)."
+  },
+  {
+    "rule": "",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; or (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so.",
+    "new_text": "The obligations in this Agreement do not apply to information which: (a) is or becomes publicly available other than through a breach of this Agreement; (b) was lawfully in the possession of the Receiving Party without an obligation of confidence prior to disclosure; (c) is lawfully obtained from a third party without breach of any obligation of confidence; (d) is required to be disclosed by law, regulation, or order of a court of competent jurisdiction, provided that the Receiving Party gives the Disclosing Party prompt written notice where lawful to do so; or (e) is independently developed by the Receiving Party without reference to or use of the Disclosing Party's Confidential Information.",
+    "comment": "Added independent development exclusion — standard protection, should have been present."
+  },
+  {
+    "rule": "",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "Save for liability which cannot be limited or excluded by applicable law, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000).",
+    "new_text": "Subject to the following, the total aggregate liability of each Party to the other under or in connection with this Agreement, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, shall not exceed one hundred thousand pounds sterling (GBP 100,000). This limitation shall not apply to: (a) fraud or fraudulent misrepresentation; (b) wilful misconduct; or (c) any breach of the confidentiality obligations in Clause 2.",
+    "comment": "Carved out fraud, wilful misconduct, and breach of confidentiality from the liability cap — these should be uncapped. Inserted 'Subject to the following' to make the carve-outs flow naturally from the opening."
+  },
+  {
+    "rule": "",
+    "edit_type": "MISALIGNMENT",
+    "target_text": "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. The parties submit to the exclusive jurisdiction of the courts of England and Wales for the resolution of all disputes arising out of or in connection with this Agreement.",
+    "new_text": "This Agreement and any dispute or claim arising out of or in connection with it or its subject matter or formation (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of England and Wales. Any dispute arising out of or in connection with this Agreement shall be referred to and finally resolved by arbitration under the LCIA Rules, which Rules are deemed to be incorporated by reference into this clause. The seat of arbitration shall be London. The number of arbitrators shall be one. The language of the arbitration shall be English. The award shall be final and binding on the parties.",
+    "comment": "Replaced court jurisdiction with LCIA arbitration — same governing law (England and Wales), but arbitration rather than litigation. This is a material drafting change; happy to revert if you'd prefer to keep the court clause."
+  }
+]

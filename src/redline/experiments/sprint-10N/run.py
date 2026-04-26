@@ -1,30 +1,30 @@
-"""Sprint 10M — driver for the Vibe Legal Redliner port on Oscar's stack.
+"""Sprint 10N — driver for the real-solicitor-brief MiniMax single-shot run.
 
-Executes Vibe's verbatim pipeline against Oscar's NDA:
+Executes Vibe's verbatim pipeline against Oscar's NDA with the 10N
+solicitor's brief replacing the 10M playbook:
 
-    1. Regenerate nda-input.docx via build_input.main()
+    1. Regenerate nda-input.docx via build_input
     2. pipeline.prepare(docx_bytes, clean_view=False)
        → contract text with doc_analyser structural-context header
-    3. Build Vibe's system + user prompts (prompt_builder)
-    4. Invoke the configured chat model
-       (OSCAR_LLM_REDLINE_EXECUTOR_* env triple)
-    5. Parse the reply (response_parser 4-layer fallback)
-    6. pipeline.apply_edits(edits_json, polish_formatting=False)
-       → nda-output-{label}.docx
-    7. verify_output on the output
-    8. Append to transcript.txt
+    3. Load system_prompt.txt (B1 trimmed Vibe per Phase 2 approval)
+    4. Assemble user message: solicitor brief + contract + data contract note
+    5. Invoke MiniMax via OSCAR_LLM_REDLINE_EXECUTOR_*
+    6. Parse via response_parser (looks for `changes`, falls back to `edits`)
+    7. pipeline.apply_edits(edits_json, polish_formatting=False)
+       → nda-output.docx
+    8. verify_output mechanical layer
+    9. Append to transcript.txt
 
-One invocation per model (no iteration). Mechanical fixes (env vars,
-imports, paths, JSON parse fences) are allowed per brief; prompt and
-parser logic are not to be iterated.
+One invocation (no two-model protocol). Mechanical fixes (env vars,
+imports, paths, JSON parse fences) are allowed; prompt and parser
+logic are not iterated. Substantive verdict deferred to Arturs's
+review of the .docx in Word.
 
 Usage:
-    python src/redline/experiments/sprint-10M/run.py --label minimax
-    python src/redline/experiments/sprint-10M/run.py --label gemini
+    python src/redline/experiments/sprint-10N/run.py
 """
 from __future__ import annotations
 
-import argparse
 import io
 import json
 import logging
@@ -35,8 +35,8 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-# 10E-style structlog silencing; must run before any `adeu` import.
 import structlog
+from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.WARNING)
 for _name in (
@@ -59,24 +59,25 @@ structlog.configure(
     logger_factory=structlog.stdlib.LoggerFactory(),
 )
 
-# Make `src/shared/llm` importable.
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(HERE))
+
+load_dotenv(REPO_ROOT / ".env")
 
 from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
 
 from src.shared.llm.chat_model import get_chat_model  # noqa: E402
 
 import build_input  # noqa: E402
-import pipeline  # Vibe's pipeline (verbatim, Adeu 1.1.0 translated) # noqa: E402
+import pipeline  # noqa: E402
 from adeu.models import ModifyText  # noqa: E402
-from prompt_builder import build_system_prompt, build_user_prompt  # noqa: E402
+from prompt_builder import build_user_prompt, load_system_prompt  # noqa: E402
 from response_parser import parse_ai_response  # noqa: E402
 
 
-# --- verify_output (copied from sprint-10e/run.py:573-717 verbatim) -------
+# --- verify_output (verbatim from sprint-10e/run.py:573-717 via 10M) ------
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _NS = {"w": W_NS}
@@ -93,7 +94,12 @@ def _element_word_count(el) -> int:
 
 
 def verify_output(output_path: Path) -> tuple[bool, list[str]]:
-    """Three mechanical checks + four Sprint 10E lawyer-shape warnings."""
+    """Three mechanical checks + four Sprint 10E lawyer-shape warnings.
+
+    Reused verbatim from 10M. Span-width warnings are still captured but
+    are diagnostic only — Arturs's substantive review of the .docx is
+    the bar (per 10N brief).
+    """
     notes: list[str] = []
 
     if not output_path.exists():
@@ -124,24 +130,22 @@ def verify_output(output_path: Path) -> tuple[bool, list[str]]:
         f"tracked changes: w:ins={len(ins_elements)}, w:del={len(del_elements)}"
     )
 
-    # (1) Span widths
+    # (1) Span widths — diagnostic only for 10N (Arturs reviews the .docx)
     for el in ins_elements + del_elements:
         tag = etree.QName(el.tag).localname
         wid = el.get(f"{{{W_NS}}}id", "?")
         wc = _element_word_count(el)
         if wc > 50:
             notes.append(
-                f"WARN: w:{tag}[id={wid}] span={wc} words — >50, "
-                f"almost certainly over-broad (lawyer-shape fail)"
+                f"INFO: w:{tag}[id={wid}] span={wc} words (>50)"
             )
         elif wc > 20:
             notes.append(
-                f"WARN: w:{tag}[id={wid}] span={wc} words — >20, "
-                f"suspicious (review against criteria)"
+                f"INFO: w:{tag}[id={wid}] span={wc} words (>20)"
             )
 
-    # (2) Nested w:del with empty w:delText
-    from lxml import etree as _etree  # already imported but keep scope clean
+    # (2) Nested w:del with empty w:delText — audit-trail integrity check
+    from lxml import etree as _etree
 
     for d in del_elements:
         empty_dts = [
@@ -178,7 +182,9 @@ def verify_output(output_path: Path) -> tuple[bool, list[str]]:
                 f"{content[:80]!r}"
             )
 
-    # (4) Litigation-text preservation spot-check
+    # (4) Litigation-text preservation spot-check — for 10N, the brief
+    #     mandates LCIA arbitration so the jurisdiction phrase SHOULD
+    #     end up in w:delText. Spot-check still applies.
     all_del_text = "".join(
         root.xpath(".//w:delText/text()", namespaces=_NS)
     )
@@ -190,69 +196,20 @@ def verify_output(output_path: Path) -> tuple[bool, list[str]]:
         )
     else:
         notes.append(
-            f"WARN: litigation phrase {needle!r} NOT found in any "
-            f"w:delText."
+            f"INFO: litigation phrase {needle!r} not in w:delText (LLM "
+            f"may have produced a wider edit that targeted the whole "
+            f"§9 paragraph including the jurisdiction phrase)."
         )
 
     return True, notes
 
 
-# --- clean-view §9 read-back ---------------------------------------------
-
-
-def clean_view_section_9(output_path: Path) -> str:
-    """Accept-all-changes simulation: read §9 text with deletes removed
-    and inserts kept. Returns the concatenated paragraph text.
-    """
-    from lxml import etree
-
-    with zipfile.ZipFile(output_path) as zf:
-        doc_xml = zf.read("word/document.xml")
-    root = etree.fromstring(doc_xml)
-
-    lines: list[str] = []
-    in_section_9 = False
-    for p in root.findall(".//w:p", _NS):
-        # Heading detection: w:t text starts with "9."
-        heading = "".join(p.xpath(".//w:t/text()", namespaces=_NS))
-        if heading.strip().startswith("9."):
-            in_section_9 = True
-            lines.append(heading)
-            continue
-        if in_section_9:
-            if heading.strip().startswith("10."):
-                break
-            # Accept-all: include w:ins content, exclude w:del / w:delText
-            parts: list[str] = []
-            for t in p.xpath(".//w:t", namespaces=_NS):
-                # skip text inside a w:del
-                ancestor_del = False
-                node = t
-                while node is not None:
-                    if etree.QName(node.tag).localname == "del":
-                        ancestor_del = True
-                        break
-                    node = node.getparent()
-                if not ancestor_del:
-                    parts.append(t.text or "")
-            lines.append("".join(parts))
-    return "\n".join(lines)
-
-
 # --- main -----------------------------------------------------------------
-
-
-def _env_triple(label: str) -> dict[str, str]:
-    """Read the three OSCAR_LLM_REDLINE_EXECUTOR_* vars for artefact logging."""
-    return {
-        key: os.environ.get(f"OSCAR_LLM_REDLINE_EXECUTOR_{key}", "")
-        for key in ("PROVIDER", "MODEL")
-    }
 
 
 def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
-    print(f"[10M] wrote {path.name} ({len(text)} chars)")
+    print(f"[10N] wrote {path.name} ({len(text)} chars)")
 
 
 def _append_transcript(transcript: Path, text: str) -> None:
@@ -261,90 +218,79 @@ def _append_transcript(transcript: Path, text: str) -> None:
         f.write("\n")
 
 
-def run_once(label: str) -> None:
-    env = _env_triple(label)
+def run_once() -> int:
     t0 = datetime.now(timezone.utc)
-    provider = env["PROVIDER"] or "<unset>"
-    model = env["MODEL"] or "<unset>"
-
-    print(
-        f"[10M] run label={label} | provider={provider} | model={model} | "
-        f"started={t0.isoformat()}"
-    )
+    provider = os.environ.get("OSCAR_LLM_REDLINE_EXECUTOR_PROVIDER", "<unset>")
+    model = os.environ.get("OSCAR_LLM_REDLINE_EXECUTOR_MODEL", "<unset>")
+    print(f"[10N] provider={provider} | model={model} | started={t0.isoformat()}")
 
     transcript = HERE / "transcript.txt"
     _append_transcript(
         transcript,
-        f"\n=== Run {label} | provider={provider} | model={model} | "
+        f"\n=== Sprint 10N Phase 3 | provider={provider} | model={model} | "
         f"started {t0.isoformat()} ===",
     )
 
-    # 1. Regenerate NDA (deterministic; same source as 10E/10K).
-    build_input.main() if hasattr(build_input, "main") else _regenerate_nda()
+    # 1. Regenerate NDA.
+    if hasattr(build_input, "main"):
+        build_input.main()
+    else:
+        import runpy
+        runpy.run_path(str(HERE / "build_input.py"), run_name="__main__")
     nda_input = HERE / "nda-input.docx"
     assert nda_input.exists(), f"missing input: {nda_input}"
-    print(f"[10M] nda-input.docx = {nda_input.stat().st_size} bytes")
+    print(f"[10N] nda-input.docx = {nda_input.stat().st_size} bytes")
 
-    # 2. pipeline.prepare — contract text with doc_analyser header.
+    # 2. pipeline.prepare.
     docx_bytes = nda_input.read_bytes()
     contract_text = pipeline.prepare(docx_bytes, clean_view=False, author="Oscar")
-    print(f"[10M] contract text = {len(contract_text)} chars (with header)")
+    print(f"[10N] contract text = {len(contract_text)} chars (with header)")
 
-    # 3. Load playbook and assemble prompts.
-    playbook_text = (HERE / "playbook.md").read_text(encoding="utf-8")
-    system_prompt = build_system_prompt()
-    user_prompt = build_user_prompt(contract_text, playbook_text)
-    llm_input = f"=== SYSTEM ===\n{system_prompt}\n\n=== USER ===\n{user_prompt}\n"
-    _write(HERE / f"llm-input-{label}.txt", llm_input)
+    # 3. Load chosen system prompt + assemble user prompt.
+    system_prompt = load_system_prompt("")
+    user_prompt = build_user_prompt(contract_text)
+    llm_input = (
+        f"=== SYSTEM (len={len(system_prompt)}) ===\n{system_prompt}\n\n"
+        f"=== USER (len={len(user_prompt)}) ===\n{user_prompt}\n"
+    )
+    _write(HERE / "llm-input.txt", llm_input)
 
-    # 4. Invoke chat model.
+    # 4. Invoke MiniMax.
     chat_model = get_chat_model(env_prefix="OSCAR_LLM_REDLINE_EXECUTOR")
+    print(f"[10N] invoking {provider}/{model} ...")
     reply = chat_model.invoke(
         [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
     )
     raw_content = reply.content if hasattr(reply, "content") else str(reply)
     if not isinstance(raw_content, str):
-        # Some providers return content as a list of parts; coerce.
         raw_content = json.dumps(raw_content, ensure_ascii=False)
-    _write(HERE / f"llm-output-{label}.txt", raw_content)
-    print(f"[10M] LLM reply = {len(raw_content)} chars")
+    _write(HERE / "llm-output.txt", raw_content)
+    print(f"[10N] LLM reply = {len(raw_content)} chars")
 
     # 5. Parse.
-    parsed = parse_ai_response(raw_content)
-    parse_method = parsed["parse_method"]
+    try:
+        parsed = parse_ai_response(raw_content)
+    except ValueError as exc:
+        print(f"[10N] PARSE FAILED: {exc}")
+        _append_transcript(transcript, f"PARSE FAILED: {exc}\n")
+        return 2
+
     edits = parsed["edits"]
+    parse_method = parsed["parse_method"]
+    source_key = parsed.get("source_key")
     reasoning = parsed.get("reasoning")
-    summary = parsed.get("summary", "")
+    summary_text = parsed.get("summary", "")
     print(
-        f"[10M] parse_method={parse_method} | edits={len(edits)} | "
-        f"reasoning={'present' if reasoning else 'absent'}"
+        f"[10N] parse_method={parse_method} | source_key={source_key} | "
+        f"edits={len(edits)} | reasoning={'present' if reasoning else 'absent'}"
     )
 
     _write(
-        HERE / f"parsed-edits-{label}.json",
+        HERE / "parsed-edits.json",
         json.dumps(edits, ensure_ascii=False, indent=2),
     )
 
-    # Classifications (reasoning.analysis[]) — Arturs re-emphasis.
-    classifications: list | None = None
-    if isinstance(reasoning, dict):
-        classifications = reasoning.get("analysis")
-    _write(
-        HERE / f"classifications-{label}.json",
-        json.dumps(
-            {
-                "parse_method": parse_method,
-                "summary": summary,
-                "reasoning": reasoning,
-            },
-            ensure_ascii=False,
-            indent=2,
-            default=str,
-        ),
-    )
-
-    # 6. Adeu calls capture — construct the same ModifyText list pipeline
-    #    will consume, write pre-apply.
+    # 6. Adeu calls capture.
     modify_texts = [
         ModifyText(
             target_text=e.get("target_text", ""),
@@ -353,7 +299,7 @@ def run_once(label: str) -> None:
         )
         for e in edits
     ]
-    with (HERE / f"adeu-calls-{label}.jsonl").open("w", encoding="utf-8") as f:
+    with (HERE / "adeu-calls.jsonl").open("w", encoding="utf-8") as f:
         for mt in modify_texts:
             f.write(
                 json.dumps(
@@ -366,12 +312,10 @@ def run_once(label: str) -> None:
                 )
             )
             f.write("\n")
-    print(f"[10M] captured {len(modify_texts)} ModifyText call(s)")
+    print(f"[10N] captured {len(modify_texts)} ModifyText call(s)")
 
-    # 7. Apply edits via Vibe's pipeline.apply_edits.
-    #    Vibe's apply_edits reconstructs ModifyText from the JSON string,
-    #    so we re-serialise the edit list (comment dropped at its
-    #    boundary per pipeline.py:228-231 — faithful).
+    # 7. Apply via pipeline.apply_edits (Vibe's pipeline; comment dropped at
+    #    the pipeline.py boundary per pipeline.py:228-231).
     edits_for_pipeline = [
         {"target_text": e.get("target_text", ""), "new_text": e.get("new_text", "")}
         for e in edits
@@ -381,24 +325,20 @@ def run_once(label: str) -> None:
         fallback_bytes=docx_bytes,
         polish_formatting=False,
     )
-    output_path = HERE / f"nda-output-{label}.docx"
+    output_path = HERE / "nda-output.docx"
     output_path.write_bytes(result["doc_bytes"])
     print(
-        f"[10M] nda-output-{label}.docx = {output_path.stat().st_size} bytes | "
+        f"[10N] nda-output.docx = {output_path.stat().st_size} bytes | "
         f"applied={result['applied']} | skipped={result['skipped']}"
     )
 
-    # 8. Verify.
+    # 8. Verify mechanical layer.
     ok, notes = verify_output(output_path)
-    print(f"[10M] verify_output ok={ok}")
+    print(f"[10N] verify_output ok={ok}")
     for line in notes:
         print(f"  {line}")
 
-    # 9. Clean-view §9 read-back.
-    cv9 = clean_view_section_9(output_path)
-    print(f"[10M] clean-view §9:\n{cv9}\n")
-
-    # 10. Transcript append.
+    # 9. Transcript.
     t1 = datetime.now(timezone.utc)
     elapsed = (t1 - t0).total_seconds()
     _append_transcript(
@@ -406,40 +346,23 @@ def run_once(label: str) -> None:
         "\n".join(
             [
                 f"provider={provider} model={model}",
-                f"parse_method={parse_method}",
+                f"parse_method={parse_method} | source_key={source_key}",
                 f"edits_returned={len(edits)} | applied={result['applied']} | skipped={result['skipped']}",
-                f"reasoning_present={reasoning is not None} | classifications_count={len(classifications or [])}",
+                f"reasoning_present={reasoning is not None}",
                 "verify_output:",
                 *[f"  {n}" for n in notes],
-                "",
-                "clean-view §9:",
-                cv9,
                 "",
                 f"finished={t1.isoformat()} | elapsed_seconds={elapsed:.1f}",
             ]
         ),
     )
-    print(f"[10M] done in {elapsed:.1f}s")
-
-
-def _regenerate_nda() -> None:
-    """Fallback if build_input.main() isn't defined — invoke the module
-    script-style. Copy of 10E's invocation shape.
-    """
-    import runpy
-
-    runpy.run_path(str(HERE / "build_input.py"), run_name="__main__")
+    print(f"[10N] done in {elapsed:.1f}s | mechanical_ok={ok}")
+    return 0 if ok else 1
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument(
-        "--label",
-        required=True,
-        help="Artefact suffix for this run (e.g. 'minimax', 'gemini').",
-    )
-    args = ap.parse_args()
-    run_once(args.label)
+    rc = run_once()
+    sys.exit(rc)
 
 
 if __name__ == "__main__":
