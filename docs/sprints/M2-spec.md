@@ -155,3 +155,15 @@ Before merging any phase to main:
 Arturs can @-mention the GC bot in a test Slack channel, get a coherent English reply in the same thread, send a follow-up message in the same thread, and see the GC remember the previous turn — and the redline track session has continued working unimpeded throughout the sprint, with no merge conflicts at integration time, and the Phase 0 pre-flight document is in the repo as a record of what existed before this sprint started.
 
 That last condition matters as much as the first. The pre-flight document is what allows future sprints (M3 onward) and future Claude Code sessions to know what they inherited.
+
+---
+
+## Addendum (2026-04-26 — post Phase 0 review)
+
+Three Phase 0 decisions adopted after the original spec was committed; full text in `docs/sprints/M2-preflight.md` § 7.
+
+1. **Second channel: AgentMail (WebSocket).** M2 ships two channels in parallel — Slack (Socket Mode) and AgentMail (WebSocket per https://docs.agentmail.to/websockets), both outbound-only, no public endpoint required from the sandbox. Phase 1 unchanged. Phase 2 splits into **2A** (Slack channel under `src/shared/channels/slack/`) and **2B** (AgentMail channel under `src/shared/channels/agentmail/`) — sequence either way; no shared implementation files between them. Shared files (`requirements.txt`, `policies/oscar-dev.yaml`, `.env.example`, `docs/secrets.md`) get append-only additions for both channels in one pass. Phase 3 starts both channels concurrently in the runtime; the integration test covers both — an `@oscar-gc` Slack mention AND an inbound email to the GC's AgentMail inbox each yield a coherent reply within 30 seconds, with thread-memory preserved across follow-ups.
+
+2. **Secrets via host bind-mount.** Sprint 3's in-sandbox `.env` is replaced by `/etc/oscar/oscar.env` on the host (root-owned, mode 0600), exposed to the sandbox via a read-only bind-mount. Main-VPS Claude Code owns the host-side file (creation + token writes); this session adds the bind-mount entry to `policies/oscar-dev.yaml` and updates the runtime config loader in Phase 2. ADR 025 reserved for the decision content. Verification at end of Phase 2: `test -n "$OSCAR_SLACK_BOT_TOKEN"` from inside the sandbox returns truthy, and a live Slack `auth.test` succeeds.
+
+3. **ADR 024 placeholder rename.** `024-PLACEHOLDER-slack-channel-deployment.md` → `024-PLACEHOLDER-channel-deployment-topologies.md` — the ADR now covers both Slack Socket Mode and AgentMail WebSocket deployment topologies.

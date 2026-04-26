@@ -46,6 +46,8 @@ the table below in the same commit. The "last touched" date answers
 | `OSCAR_ENV` | Selects which `policies/oscar-<env>.yaml` loads and which `oscar_config.yaml` section applies (ADR 005). | Declared in ADR 005; no runtime code reads it yet. |
 | `LANGSMITH_API_KEY` | Enables LangSmith tracing if set. Sprint 6 confirmed `langsmith` silently no-ops when unset. | Not required; would also need a `smith.langchain.com` policy block if used. |
 | `LANGCHAIN_TRACING_V2` | LangChain's alternative tracing switch. Only relevant with `LANGSMITH_API_KEY`. | Not required; same gating as above. |
+| `OSCAR_AGENTMAIL_API_KEY` | Workspace-scoped API key for the AgentMail channel (https://docs.agentmail.to/websockets). One key per workspace, not per inbox. Read by `src/shared/channels/agentmail/config.py` once Phase 2B lands. | Declared in Sprint M2 Phase 0 addendum (2026-04-26); first runtime read in Phase 2B. Real value injected via host bind-mount of `/etc/oscar/oscar.env` per ADR 025. |
+| `OSCAR_AGENTMAIL_INBOX_ID` | Identifier of the GC's dedicated AgentMail inbox (separate from the OpenClaw inbox). Selects which inbox the runtime subscribes to over the WebSocket. | Declared in Sprint M2 Phase 0 addendum (2026-04-26); first runtime read in Phase 2B. Same provenance as `OSCAR_AGENTMAIL_API_KEY`. |
 
 ## Non-env secrets
 
