@@ -89,7 +89,17 @@ def _counter_propose_single(
         ), next_id
 
     element_text = extract_element_text(element, entry.change_type)
-    if is_text_identical(element_text, replacement_text):
+    # Gate refuses no-op edits on insertion paths (target_text == new_text
+    # indicates LLM produced a no-op, likely hallucination). On deletion
+    # paths, target_text == new_text expresses a meaningful position:
+    # Acme is restoring text Zenith deleted, which produces a layered
+    # shape (Zenith w:del + Acme w:ins of identical text). This is
+    # rule-3 escape behaviour and the gate permits it specifically on
+    # deletion change_type.
+    if (
+        entry.change_type != "deletion"
+        and is_text_identical(element_text, replacement_text)
+    ):
         return ActionOutcome(
             action_type="counter_propose",
             target_id=entry.change_id,
