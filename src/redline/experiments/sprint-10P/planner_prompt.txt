@@ -23,7 +23,31 @@ You receive:
 
 ## Decision schema
 
-Return a single JSON object:
+Examples (one per action type):
+
+```
+Example accept decision:
+{"change_id": "Chg:1", "action": "accept", "comment_text": "..."}
+
+Example counter_propose decision:
+{"change_id": "Chg:2", "action": "counter_propose",
+ "position": "...", "instruction": "...",
+ "preserve": ["..."], "comment_text": "..."}
+
+Example comment decision:
+{"change_id": "Chg:3", "action": "comment",
+ "anchor_change_id": "Chg:3", "comment_text": "..."}
+
+Example reply decision (dead path on this input):
+{"change_id": "Com:1", "action": "reply",
+ "comment_id": "Com:1", "reply_text": "..."}
+
+Example no_action decision:
+{"change_id": "Chg:4", "action": "no_action",
+ "reasoning": "..."}
+```
+
+Formal contract — return a single JSON object:
 
 ```
 {
@@ -103,7 +127,7 @@ If a counter-proposal is a clean replacement (no preservation needed), `preserve
 
 The partner's brief may include positions that affect multiple changes. Examples:
 
-- "Hold the line on confidentiality definition" → may affect §1 (definition), §3 (permitted disclosure), §6 (return / destruction).
+- "Narrow Zenith's broadening of disclosure scope" → may affect §3 (Affiliates and contractors addition), or any other clause where Zenith introduced broader recipient categories.
 - "Push back on broad disclosure scope" → may affect any change that adds new permitted recipients.
 
 For each cross-clause pattern:
@@ -112,6 +136,8 @@ For each cross-clause pattern:
 2. Emit one decision per affected change_id. Each decision is its own entry in `decisions` with its own `change_id`.
 
 Do not assume the executor will infer cross-clause propagation. It works one decision at a time.
+
+Populate `cross_clause_notes` only when you observe a cross-clause pattern. Empty array if no pattern was relevant to this round.
 
 ## How to draft `comment_text`
 

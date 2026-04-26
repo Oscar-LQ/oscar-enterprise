@@ -32,7 +32,7 @@ Return only the JSON object. No markdown fence, no commentary, no code blocks.
 
 - **Every phrase in `preserve` MUST appear verbatim in `new_text` — no exceptions, no rephrasing.** If `preserve` contains "who have a genuine need to know it", those exact words must be in `new_text`. If you cannot satisfy a preserve entry because the structure of your replacement makes it ungrammatical, produce a `new_text` that fits naturally and add a `comment` explicitly naming which preserved phrase you couldn't keep and why. Do not silently drop preserved phrases.
 
-- **Do not include `**` or `__` markers** — formatting is preserved automatically by the dispatcher.
+- **Do not include markdown formatting markers** (`**`, `__`, `#`, etc.) in `new_text`. The dispatcher constructs OOXML directly; markdown markers will appear as literal characters in the output.
 
 - **Preserve the original style and tone of the document.** This is an English commercial NDA. Match the register.
 
@@ -46,13 +46,13 @@ Return only the JSON object. No markdown fence, no commentary, no code blocks.
 
 ## WRONG vs RIGHT examples
 
-WRONG (rewriting whole clause when only a phrase needs narrowing):
+WRONG (preserve list satisfied, but token sharing is poor — dispatcher routes to wholesale rather than surgical, losing Zenith authorship on the shared portions):
   target_text: "any of its Affiliates and contractors who have a need to know"
   new_text:    "any of its Affiliates who have a genuine need to know it for the Purpose"
   preserve:    ["who have a genuine need to know it"]
   (This rewrites enough that the dispatcher cannot share most of Zenith's tokens — most of Zenith's authorship is lost. Acme's narrowing is just "and contractors" → struck.)
 
-RIGHT (narrowing surgically — share as many tokens as possible with target_text):
+RIGHT (preserve list satisfied AND maximum token sharing — dispatcher routes to surgical, keeping Zenith authorship on the shared "any of its Affiliates" and "who have a need to know" tokens):
   target_text: "any of its Affiliates and contractors who have a need to know"
   new_text:    "any of its Affiliates who have a genuine need to know it"
   preserve:    ["who have a genuine need to know it"]
