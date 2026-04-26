@@ -807,7 +807,7 @@ URLs are documented below.**
   CoreWeave operates a layered framework — useful structural
   reference for what playbook positions need to address.
 
-**Candidate 3 — CoreWeave–OpenAI Master Services Agreement (named).**
+**Candidate 3 — CoreWeave–OpenAI Master Services Agreement (earlier S-1 filing).**
 - **Filing**: filed as exhibit in CoreWeave SEC filing (CIK 1769628,
   filing index 000114036125036118, exhibit 10-31).
 - **URL**: `https://www.sec.gov/Archives/edgar/data/1769628/000114036125036118/ny20053122x6_ex10-31.htm`
@@ -815,28 +815,31 @@ URLs are documented below.**
   particular filing).
 - **Provider side**: CoreWeave.
 - **Shape**: explicit named-party version of the CoreWeave–OpenAI
-  arrangement — useful if Sprint 10Q wants a fixture with real party
-  names for narrative recognisability, accepting the trade-off that
-  Oscar's repo would carry the named-party text.
+  arrangement at S-1 filing date — earlier counterpart of Candidate 4
+  below.
 - **Mirror**: Justia at
   `https://contracts.justia.com/companies/coreweave-inc-103508/contract/1318200/`
   (also returned 403 in this fetch).
 
-**Candidate 4 — CoreWeave–Meta Master Services Agreement.**
-- **Filing**: filed as Exhibit 10.1 to a CoreWeave Form 8-K dated
-  2025-09-25, governing Meta's $14.2B order form for AI cloud
-  capacity through December 14, 2031 (with capacity expansion option
-  through 2032).
+**Candidate 4 — CoreWeave–OpenAI Master Services Agreement (2025-09-25 8-K).** ★ **Sprint 10Q test fixture — Arturs's selection 2026-04-26.**
+- **Filing**: Exhibit 10.1 to CoreWeave Form 8-K dated 2025-09-25.
 - **URL**: `https://www.sec.gov/Archives/edgar/data/1769628/000119312525216497/d17274dex101.htm`
-  (URL pattern matches the Meta deal's filing date — confirm with
-  direct fetch).
-- **Customer**: Meta Platforms (named).
+- **Customer**: **OpenAI OpCo, LLC** (named; signed by Sam Altman as
+  CEO — verified by Arturs via direct fetch). Earlier draft of the
+  research note misidentified this exhibit as a CoreWeave–Meta MSA
+  based on press coverage of the September 2025 Meta deal in the same
+  filing window; the EX-10.1 itself is the OpenAI MSA. Corrected
+  2026-04-26.
 - **Provider side**: CoreWeave.
-- **Shape**: most recent material agreement of the four, scaled
-  up by an order of magnitude vs the OpenAI agreement; reflects
-  late-2025 / early-2026 MSA drafting practice. Closest to the
-  G42-Microsoft / G42-Stargate scale Arturs specified as Sprint 10Q's
-  production-context relevance.
+- **Shape**: most recent drafting practice (mid-2025); customer-side
+  perspective from a sophisticated AI buyer; both parties had top-tier
+  counsel; negotiated balance reflects real positions; closer analogue
+  to G42's actual deal flow than the (separate) Meta MSA would be —
+  G42 is a customer; Meta is a hyperscaler.
+- **Specific clause noted**: §7(a) export-controls representation
+  directly relevant to G42's US-UAE-China triangulation context.
+- **Verdict**: all 13 position categories from the customer-side MSA
+  playbook map onto real clauses in this MSA. Sprint 10Q test fixture.
 
 #### Cerebras–G42 master agreement — referenced but not directly accessible
 
@@ -912,60 +915,65 @@ position categories in the customer-side MSA playbook.
 #### Licensing for SEC-filed exhibits
 
 SEC filings are public-domain documents. Analytical use, redlining,
-and inclusion in test fixtures are unambiguously permissible. The one
-caveat for Oscar's repo: filings with named-party visibility
-(e.g., Candidate 3, CoreWeave–OpenAI) carry the named parties' brand
-identifiers — Oscar's test fixture can either keep the names (for
-narrative recognisability) or globally rename to Oscar's
-hyperscaler-style "CloudCo" / customer-side "Sovereign AI Holdings"
-fictionalised names per Arturs's open question 5b. Recommend
-fictionalising for Oscar's test repo to avoid any party-name
-attribution confusion in lawyer reviews.
+and inclusion in test fixtures are unambiguously permissible. **No
+fictionalisation pass is required for internal testing** — the earlier
+draft's "global rename to CloudCo / Sovereign AI Holdings"
+recommendation is superseded for Sprint 10Q. If/when external-facing
+material references the test (video demo, pitch deck, public-facing
+case study), fictionalisation or anonymisation becomes a separate
+decision at that point.
 
-#### Updated recommendation
+#### Decision (Arturs, 2026-04-26)
 
-1. **Primary path**: Arturs (or a future session with browser
-   access) directly opens the four EDGAR URLs above and reviews
-   document shape (length, redaction-level, clause skeleton). Pick the
-   cleanest of the four as Sprint 10Q's test fixture base. Ranking
-   suggestion before review: Candidate 1 (CoreWeave–Customer
-   bare-metal MSA, EX-10.24) > Candidate 4 (CoreWeave–Meta) >
-   Candidate 2 (CoreWeave–Customer general, EX-10.23) > Candidate 3
-   (CoreWeave–OpenAI named) — bare-metal specifically matches
-   Sprint 10Q's compute-capacity frame; Meta deal is most recent
-   drafting practice; named-party version requires fictionalisation
-   for clean repo inclusion.
+**Sprint 10Q test fixture: CoreWeave–OpenAI MSA, Exhibit 10.1 to the
+2025-09-25 CoreWeave 8-K.** Reasons (per Arturs):
 
-2. **Cerebras–G42 follow-up**: separately, fetch Cerebras's April 2026
-   S-1 (full filing index 000162828026025762) and the prior September
-   2024 filing; identify whether the master agreement with G42 is
-   filed as a standalone exhibit. If yes, this is the highest-fidelity
-   match to the G42 production context — accept whatever named-party
-   exposure that entails (the relationship is already extensively
-   public-disclosed; Oscar's use as test fixture is incremental, not
-   first-disclosure).
+- Most recent drafting practice (mid-2025); reflects current market
+  on AI compute infrastructure deals
+- Customer-side perspective (OpenAI as buyer); matches the test
+  framing for Sprint 10Q's customer-side MSA playbook
+- All 13 playbook position categories from §5 map onto real clauses
+  in this MSA (verified by Arturs via direct fetch)
+- Both parties had top-tier counsel; negotiated balance reflects real
+  positions
+- Closer analogue to G42's actual deal flow than the Meta MSA would
+  be — G42 is a customer; Meta is a hyperscaler
+- Public domain (SEC filing); usable for internal testing as-is, no
+  fictionalisation
+- §7(a) export-controls representation directly relevant to G42's
+  US-UAE-China triangulation context
 
-3. **Synthetic hybrid as fallback**: only if the four named
-   candidates all fail document-shape review (e.g., redaction so
-   heavy that no clause skeleton remains — unlikely per general SEC
-   compliance norms but possible for highly sensitive deals), revert
-   to the Microsoft + OpenAI synthetic hybrid path documented in the
-   original recommendation above.
+**Cerebras–G42 standalone-exhibit existence remains an open follow-up**
+but is not Sprint 10Q's blocker. If a future sprint wants the
+highest-fidelity G42 production analogue, the Cerebras April 2026 S-1
+and September 2024 S-1 filings are the place to look.
 
-4. **Fictionalisation pass**: regardless of source, Oscar's test
-   fixture globally renames named parties to fictionalised
-   placeholders ("CloudCo" provider, "Sovereign AI Holdings" or
-   "G42-style enterprise customer" — Arturs's call). This is mechanical
-   string-replacement, ~5 minutes work, and cleanly separates Sprint
-   10Q's test artefact from any specific public deal's narrative.
+#### Action items before Sprint 10Q drafts
 
-#### Forward action
+These actions belong on a Sprint 10Q feature branch (or an interim
+fixture-prep branch); they are NOT main-branch research-note work.
 
-Sprint 10Q drafts can begin once Arturs has directly reviewed the
-four EDGAR candidates and selected one (or confirmed fallback to the
-synthetic hybrid). The 13 position categories documented above hold
-regardless of fixture source — the playbook itself is independent of
-which provider-favourable MSA Oscar redlines against.
+1. **Fetch the full text of EX-10.1** at
+   `https://www.sec.gov/Archives/edgar/data/1769628/000119312525216497/d17274dex101.htm`.
+   SEC's anti-scrape gate requires a User-Agent containing a contact
+   email per
+   [SEC fair-access policy](https://www.sec.gov/os/accessing-edgar-data);
+   set the header accordingly when fetching programmatically.
+
+2. **Convert HTML to .docx** for Sprint 10Q's pipeline. Two viable
+   paths: (a) `python-docx` constructs the .docx from parsed HTML
+   structure; (b) `pandoc` handles HTML-to-docx directly. Verify the
+   converted .docx renders in Word correctly (paragraph structure,
+   headings, signature-block tables).
+
+3. **Save at** `src/redline/experiments/sprint-10Q/msa-input.docx` on
+   the feature branch (or interim fixture-prep branch). Keep the SEC
+   source URL and accession number in a small README at that path for
+   provenance.
+
+4. ✅ **Update §5 of the research note on main** — this commit lands
+   the correction (Meta → OpenAI) and documents the
+   no-fictionalisation decision for internal use.
 
 ### Customer-side MSA playbook coverage
 
@@ -1258,7 +1266,7 @@ playbook joins now and memory could join later), not four-named-fields.
 | 2 | Should Oscar use Deep Agents `MemoryMiddleware`? | **No** — adopt the pattern (file → system prompt) without the framework; pipeline isn't a Deep Agent and middleware's prompt template encourages LLM self-update which violates constraint #1 | Confirm |
 | 3 | How does the planner prompt change for four inputs? | Playbook → system prompt section; first-pass / subsequent-pass mediated by state-of-play emptiness; new behavioural rule 6; new per-decision `divergence_from_playbook` + `divergence_comment_text` fields; mute parsed at run.py | Playbook position in prompt; divergence schema; canonical wording; mute keyword list; first-pass divergence semantics |
 | 4 | Divergence flagging mechanism? | Layer 1 (visible) — single combined Oscar Counsel comment with `[Departs from playbook on …]` prefix; Layer 2 (audit) — `divergence-audit.json`, divergences-only, always written; Layer 3 (mute) — keyword parser at run.py threading SessionConfig to dispatcher | Combined vs separate comments; audit granularity; audit location; cross-round mute persistence |
-| 5 | Test artefact source? | **Updated 2026-04-26**: SEC EDGAR has four named compute-MSA candidates (CoreWeave–Customer bare-metal EX-10.24, CoreWeave–Customer general EX-10.23, CoreWeave–OpenAI EX-10-31, CoreWeave–Meta EX-10.1 from 2025-09-25 8-K) plus Cerebras–G42 referenced in Cerebras's April 2026 S-1; Microsoft + OpenAI synthetic hybrid as fallback only. 13 position categories for customer-side MSA playbook hold regardless of source. | Direct EDGAR fetch of candidates (this-session 403); Arturs-side document-shape review; named-party fictionalisation; Cerebras–G42 exhibit existence check; playbook scope; playbook authorship |
+| 5 | Test artefact source? | **Decided 2026-04-26 (Arturs)**: CoreWeave–OpenAI MSA, EX-10.1 to 2025-09-25 8-K. Customer = OpenAI OpCo, LLC (named, signed Sam Altman). All 13 playbook position categories map onto real clauses; §7(a) export-controls relevant to G42 context. No fictionalisation for internal use. Earlier draft mislabelled this exhibit as Meta — corrected. | Cerebras–G42 standalone-exhibit existence (deferred follow-up; not 10Q blocker); playbook scope; playbook authorship |
 | 6 | Memory roadmap? | **Direction > Playbook > Memory > Default** precedence; Slack option B (queue + approve); per-client RAG over past-matter audit; "context layers" prompt structure to absorb memory later without re-architecture | Precedence ordering; Slack path; cross-matter scope; retrieval mechanism; end-of-matter banking surface |
 
 Phase 0 closes here. The open questions in each section feed the
