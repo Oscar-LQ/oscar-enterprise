@@ -2573,7 +2573,19 @@ Recommendation: (a) first (cheapest, directly tests the tier hypothesis against 
 
 (vi) **Arturs's standing review items** still outstanding from 10E/10K/10L/10M plus the new substantive verdict on 10N's `nda-output.docx`.
 
-**Substantive verdict (Arturs's review of `nda-output.docx`):** TBD. *To be appended when received.*
+**Substantive verdict (Arturs's review of `nda-output.docx`): production-acceptable.** The output landed four targeted edits across four clauses with sentence-level surgical anchoring and structurally sound clause replacement (the §9 LCIA block reads as continuous prose; the LLM did not invent a sub-heading or break the new arbitration content into noisy paragraph fragments). **The eleven-sprint capability question — "can MiniMax produce solicitor-shape redlines on a real brief?" — is settled in the affirmative.**
+
+Three known gaps identified, all LLM-judgement errors rather than pipeline bugs:
+
+1. **Clause 3 — dropped the "who have a genuine need to know it" qualifier when adding the group-companies carve-out.** Path-of-least-edit-complexity behaviour at the cost of substantive preservation. The group-companies addition restructured the Representatives definition without carrying the need-to-know test through to the new recipient class.
+
+2. **Clause 7 — lost the "Save for liability which cannot be limited or excluded by applicable law" catch-out when restructuring to add fraud / wilful misconduct / confidentiality-breach carve-outs.** Substitution rather than extension — the new carve-outs replaced the mandatory-law preservation rather than sitting alongside it.
+
+3. **Cross-clause — missed propagating "mutual obligations throughout" to the recitals and the asymmetric Purpose definition.** Cross-document directives don't propagate well through per-clause review patterns. The brief named the position; the LLM treated each clause in isolation and the recitals + Purpose definition retained the original asymmetric framing.
+
+See the Q1/Q2 addendum below for diagnostics on (a) comment emission — comments survive end-to-end up to `run.py`'s `edits_for_pipeline` re-serialisation, where the field is stripped by Vibe-architecture inheritance from `pipeline.py:228-231`; not a parser or Adeu bug — and (b) clause 4 connector handling — MiniMax took a wide 567-char target but `diff_cleanupSemantic` preserved the 360-char common prefix and produced surgically narrow OOXML (w:del=2 words, w:ins=21 words). The narrowness lever is confirmed as the LLM's `new_text` drafting style (preserving original phrasing), not target-sizing.
+
+**Forward pointer:** Sprint 10O tests whether a planner-executor architecture (GPT-5.5 non-Pro plans with explicit preservation requirements; MiniMax executes per-instruction) closes these three specific gaps. Direct head-to-head against 10N's existing `nda-output.docx` on the same NDA against the same brief.
 
 **No new ADRs** — no architectural decision was made that warrants one (Adeu version pin is in `requirements.txt`; B1-vs-B2 prompt choice is a tactical sprint variable, not architecture). **No new dependencies.** **No policy widenings.** `requirements.txt` updated for the Adeu version bump only.
 
