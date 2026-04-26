@@ -66,6 +66,7 @@ load_dotenv(REPO_ROOT / ".env")
 from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
 
 from src.shared.llm.chat_model import get_chat_model  # noqa: E402
+from src.shared.llm.metadata_capture import capture_reply_metadata  # noqa: E402
 
 import build_input  # noqa: E402
 import pipeline  # noqa: E402
@@ -275,6 +276,7 @@ def run_once() -> int:
     p_reply = planner_chat.invoke(
         [SystemMessage(content=planner_system), HumanMessage(content=planner_user)]
     )
+    capture_reply_metadata(p_reply, HERE / "llm-meta-planner.json")
     p_raw = p_reply.content if hasattr(p_reply, "content") else str(p_reply)
     if not isinstance(p_raw, str):
         p_raw = json.dumps(p_raw, ensure_ascii=False)
@@ -341,6 +343,7 @@ def run_once() -> int:
         e_reply = executor_chat.invoke(
             [SystemMessage(content=executor_system), HumanMessage(content=executor_user)]
         )
+        capture_reply_metadata(e_reply, HERE / f"llm-meta-executor-{idx:02d}-{pid}.json")
         e_raw = e_reply.content if hasattr(e_reply, "content") else str(e_reply)
         if not isinstance(e_raw, str):
             e_raw = json.dumps(e_raw, ensure_ascii=False)
