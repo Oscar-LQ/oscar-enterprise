@@ -1,0 +1,49 @@
+{
+  "authors": [
+    {
+      "name": "Zenith Counsel",
+      "insertion_count": 2,
+      "deletion_count": 1,
+      "comment_count": 0,
+      "earliest_date": "2026-04-26T13:25:32Z",
+      "latest_date": "2026-04-26T13:25:32Z",
+      "total_changes": 3
+    }
+  ],
+  "changes": [
+    {
+      "change_id": "Chg:1",
+      "change_type": "deletion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "In this Agreement, \"Confidential Information\" means any information, whether written, oral, electronic, or in any other form, disclosed by one Party (the \"Disclosing Party\") to the other Party (the \"Receiving Party\") in connection with the Purpose, including without limitation technical, commercial, financial, operational, and strategic information, whether or not marked or described as confidential. \"Purpose\" means the Parties' evaluation of a potential commercial collaboration relating to the supply of professional services by Zenith to Acme.",
+      "changed_text": "whether or not marked or described as confidential.",
+      "ooxml_id": "6",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:2",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "The Receiving Party may disclose Confidential Information to its directors, officers, employees, and professional advisers and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party (together, \"Representatives\") who have a genuine need to know it for the Purpose, provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement. The Receiving Party shall be liable for any breach of this Agreement by its Representatives.",
+      "changed_text": "and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party ",
+      "ooxml_id": "10",
+      "replies": []
+    },
+    {
+      "change_id": "Chg:3",
+      "change_type": "insertion",
+      "author": "Zenith Counsel",
+      "date": "2026-04-26T13:25:32Z",
+      "party_role": "unknown",
+      "paragraph_context": "Upon written request of the Disclosing Party, or on termination of this Agreement, the Receiving Party shall, at the Disclosing Party's option, promptly return or destroy all Confidential Information of the Disclosing Party in its possession or control, together with all copies, extracts, and notes containing or derived from such information, and shall certify such return or destruction in writing. The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement. Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
+      "changed_text": " Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
+      "ooxml_id": "14",
+      "replies": []
+    }
+  ],
+  "pending_count": 3
+}

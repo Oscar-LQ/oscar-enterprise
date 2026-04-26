@@ -1,0 +1,39 @@
+{
+  "decisions": [
+    {
+      "action": "counter_propose",
+      "change_id": "Chg:1",
+      "position": "Hold Acme's original broad definition of Confidential Information so unmarked and oral information remains protected.",
+      "instruction": "Counter-propose by reinstating the deleted wording at the end of the Confidential Information definition; Acme should not have to prove that information was marked or expressly described as confidential where it was disclosed in connection with the Purpose.",
+      "preserve": [
+        "whether written, oral, electronic, or in any other form",
+        "including without limitation technical, commercial, financial, operational, and strategic information",
+        "whether or not marked or described as confidential."
+      ],
+      "comment_text": "Counter-proposed to restore coverage for unmarked information, which is important given the definition expressly covers oral and other non-documentary disclosures."
+    },
+    {
+      "action": "counter_propose",
+      "change_id": "Chg:2",
+      "position": "Narrow Zenith's expanded recipient group to Affiliates only and exclude contractors and subcontractors absent consent.",
+      "instruction": "Revise Zenith's insertion so the permitted disclosure wording adds Affiliates and the Affiliate definition, but removes contractors and subcontractors from the automatic permitted-recipient group; keep the Representatives label applying to the approved recipient categories and preserve the need-to-know, confidentiality flow-down and Receiving Party liability protections.",
+      "preserve": [
+        "directors, officers, employees, and professional advisers",
+        "where \"Affiliates\" means entities controlling, controlled by or under common control with a Party",
+        "who have a genuine need to know it for the Purpose",
+        "provided that the Receiving Party procures that each such Representative is bound by obligations of confidentiality no less onerous than those set out in this Agreement",
+        "The Receiving Party shall be liable for any breach of this Agreement by its Representatives."
+      ],
+      "comment_text": "Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor."
+    },
+    {
+      "action": "accept",
+      "change_id": "Chg:3",
+      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by non-access, limited-purpose access and continued confidentiality obligations."
+    }
+  ],
+  "cross_clause_notes": [
+    "Acme is holding the line on the confidentiality perimeter: Chg:1 narrows what information is protected and Chg:2 broadens who may receive it, so both are counter-proposed while the operational backup carve-out in Chg:3 is accepted."
+  ],
+  "parse_method": "direct"
+}

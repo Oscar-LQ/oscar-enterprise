@@ -1,0 +1,41 @@
+{
+  "accepts_applied": 1,
+  "accepts_skipped": 0,
+  "replies_applied": 0,
+  "replies_skipped": 0,
+  "counter_proposes": [
+    {
+      "target_id": "Chg:1",
+      "status": "skipped",
+      "method": "",
+      "reason": "Replacement text identical to original",
+      "original_text": "whether or not marked or described as confidential.",
+      "new_text": "whether or not marked or described as confidential."
+    },
+    {
+      "target_id": "Chg:2",
+      "status": "success",
+      "method": "surgical",
+      "reason": "",
+      "original_text": "and its Affiliates, and to its contractors and subcontractors engaged in connection with the Purpose, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party ",
+      "new_text": "and its Affiliates, where \"Affiliates\" means entities controlling, controlled by or under common control with a Party"
+    }
+  ],
+  "add_comments": [
+    {
+      "target_id": "Upon written request of the Disclosing Party, or on termination of this Agreement, the Receiving Party shall, at the Disclosing Party's option, promptly return or destroy all Confidential Information of the Disclosing Party in its possession or control, together with all copies, extracts, and notes containing or derived from such information, and shall certify such return or destruction in writing. The Receiving Party may retain one copy of any Confidential Information where required by applicable law or its reasonable internal record-keeping policies, provided that such retained copy remains subject to this Agreement. Without limiting the foregoing, the Receiving Party is not required to delete Confidential Information from automatic electronic backup or archival systems where deletion is not reasonably practicable, provided that any such information is not restored or accessed except as required for legal, regulatory, compliance, or business continuity purposes and remains subject to the terms of this Agreement.",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Accepted — the backup-system carve-out is operationally reasonable and remains constrained by non-access, limited-purpose access and continued confidentiality obligations."
+    },
+    {
+      "target_id": "Chg:2",
+      "status": "success",
+      "reason": "",
+      "comment_text": "Counter-proposed Affiliates only, as extending automatic disclosure rights to contractors and subcontractors materially widens the disclosure perimeter beyond what Acme can readily monitor."
+    }
+  ],
+  "no_actions": [],
+  "decisions_skipped": [],
+  "process_batch_skipped_details": []
+}
