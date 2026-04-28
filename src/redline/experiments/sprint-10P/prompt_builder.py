@@ -49,7 +49,10 @@ def _serialise_state_of_play(state) -> str:
 
 
 def build_planner_user_prompt(
-    state, original_nda_clean_text: str
+    state,
+    original_nda_clean_text: str,
+    *,
+    solicitor_brief: str | None = None,
 ) -> str:
     """Assemble the planner's user message.
 
@@ -57,8 +60,17 @@ def build_planner_user_prompt(
       1. Acme's brief (the partner's tactical instructions)
       2. State-of-play JSON (Zenith's tracked changes, structured)
       3. Original NDA clean text (Acme's round-1 draft, for cross-reference)
+
+    If ``solicitor_brief`` is None, the brief is loaded from
+    ``user_prompt.txt`` (preserves ``run_once`` behaviour). When supplied,
+    the caller's string substitutes for the file content. The supplied
+    string is normalised to end with exactly one newline so the assembled
+    prompt's section spacing is stable.
     """
-    brief = _solicitor_brief()
+    if solicitor_brief is None:
+        brief = _solicitor_brief()
+    else:
+        brief = solicitor_brief.rstrip("\n") + "\n"
     state_json = _serialise_state_of_play(state)
 
     return (

@@ -29,12 +29,15 @@ Usage:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import sys
 import zipfile
 from collections import Counter
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -478,6 +481,199 @@ def run_once() -> int:
 def main() -> None:
     rc = run_once()
     sys.exit(rc)
+
+
+# --- M3 sibling: parameterised callable for the LangChain redline tool ----
+#
+# `run_once` above is the demonstrator script entry point — hardcoded
+# fixture paths, "Acme Counsel" author, brief loaded from user_prompt.txt.
+# `run_redline` below is the parameterised callable the M3 redline tool
+# wraps. Both coexist; neither edits the other. (M3 plan § 5 Phase 1.)
+
+
+@dataclass(frozen=True)
+class RedlineResult:
+    """Structured result returned by `run_redline`.
+
+    `run_once` returns an int exit code instead — preserves Sprint 10P
+    demonstrator-script semantics. `run_redline` returns this dataclass so
+    the LangChain tool wrapper can produce a structured summary for Oscar.
+    """
+
+    output_path: Path
+    elapsed_seconds: float
+    decisions_total: int
+    decisions_accepted: int
+    decisions_countered: int
+    decisions_commented: int
+    output_size_bytes: int
+    mechanical_ok: bool
+    notes: list[str] = field(default_factory=list)
+
+
+_DEFAULT_AUTHOR_NAME = "Oscar"
+
+
+async def run_redline(
+    *,
+    input_path: Path,
+    output_path: Path,
+    original_path: Path,
+    brief: str,
+    author_name: str = _DEFAULT_AUTHOR_NAME,
+    author_date: date | None = None,
+    progress_callback: Callable[[str], Awaitable[None]] | None = None,
+) -> RedlineResult:
+    """Run the 10P counterparty-response pipeline with parameterised inputs.
+
+    Mirrors `run_once`'s body — extract state of play, build planner
+    prompt, invoke planner, parse decisions, run executor callback per
+    counter-propose, apply via `pipeline.apply_decisions`, verify output —
+    but with inputs parameterised and the brief substituted into the
+    planner user prompt instead of read from `user_prompt.txt`.
+
+    No diagnostic files are written (no transcript, no per-call LLM
+    artefacts on disk). The structured `RedlineResult` is the output;
+    the dispatcher's logging captures any errors.
+
+    `progress_callback` (if supplied) is awaited at five well-defined
+    milestones so a Slack-thread-scoped poster narrates progress in
+    plain English while the 55-128s pipeline runs.
+
+    Args:
+        input_path: Path to the .docx the counterparty returned with
+            their tracked changes.
+        output_path: Path to write the redlined .docx.
+        original_path: Path to the clean original .docx (pre-counterparty)
+            for cross-reference by the planner.
+        brief: The partner's plain-English instruction for this round —
+            substituted for `user_prompt.txt`'s content.
+        author_name: Identity for tracked changes attributed to "us".
+            Default "Oscar"; flips to the configured employer's name in
+            a later sprint.
+        author_date: Override the timestamp on tracked changes. Default
+            None (uses current UTC).
+        progress_callback: Optional async callback. Called with one of
+            five plain-English progress messages.
+
+    Raises:
+        FileNotFoundError: if `input_path` or `original_path` does not exist.
+        ValueError: if planner's response cannot be parsed.
+    """
+    if not input_path.exists():
+        raise FileNotFoundError(f"input .docx not found: {input_path}")
+    if not original_path.exists():
+        raise FileNotFoundError(f"original .docx not found: {original_path}")
+
+    async def _emit(msg: str) -> None:
+        if progress_callback is not None:
+            await progress_callback(msg)
+
+    t0 = datetime.now(timezone.utc)
+
+    # 1. Extract state-of-play (Zenith's tracked changes, structured).
+    await _emit("Reading the document and extracting the counterparty's tracked changes.")
+    state = await asyncio.to_thread(pipeline.extract_state_of_play, input_path)
+
+    # 2. Extract clean original NDA text for the planner (cross-reference).
+    original_bytes = await asyncio.to_thread(original_path.read_bytes)
+    contract_text = await asyncio.to_thread(_extract_clean_contract_text, original_bytes)
+
+    # 3. Build planner prompts. Brief substitutes for user_prompt.txt.
+    planner_system = await asyncio.to_thread(load_planner_system_prompt)
+    planner_user = build_planner_user_prompt(
+        state, contract_text, solicitor_brief=brief
+    )
+
+    # 4. Invoke planner.
+    await _emit("Thinking through the counterparty's positions against the brief.")
+    planner_chat = get_chat_model(env_prefix="OSCAR_LLM_REDLINE_PLANNER")
+    p_reply = await planner_chat.ainvoke(
+        [SystemMessage(content=planner_system), HumanMessage(content=planner_user)]
+    )
+    p_raw = p_reply.content if hasattr(p_reply, "content") else str(p_reply)
+    if not isinstance(p_raw, str):
+        p_raw = json.dumps(p_raw, ensure_ascii=False)
+
+    # 5. Parse decisions.
+    parsed = parse_decisions_response(p_raw)
+    decisions = parsed["decisions"]
+
+    if not decisions:
+        # Empty decision list — nothing to apply. Emit "done" and return.
+        await _emit("Done — the planner returned no decisions to apply.")
+        elapsed = (datetime.now(timezone.utc) - t0).total_seconds()
+        return RedlineResult(
+            output_path=output_path,
+            elapsed_seconds=elapsed,
+            decisions_total=0,
+            decisions_accepted=0,
+            decisions_countered=0,
+            decisions_commented=0,
+            output_size_bytes=0,
+            mechanical_ok=False,
+            notes=["empty decision list — planner returned no decisions"],
+        )
+
+    # 6. Build executor callback. Synchronous .invoke (runs inside the
+    # asyncio.to_thread wrapper around apply_decisions in step 8).
+    has_counter_proposes = any(d["action"] == "counter_propose" for d in decisions)
+    if has_counter_proposes:
+        await _emit("Drafting the counter-proposals.")
+
+    executor_system = load_executor_system_prompt()
+    executor_chat = get_chat_model(env_prefix="OSCAR_LLM_REDLINE_EXECUTOR")
+
+    def executor_callback(decision, state_entry):
+        entry_dict = json.loads(state_entry.model_dump_json())
+        executor_user = build_executor_user_prompt(decision, entry_dict)
+        e_reply = executor_chat.invoke(
+            [SystemMessage(content=executor_system), HumanMessage(content=executor_user)]
+        )
+        e_raw = e_reply.content if hasattr(e_reply, "content") else str(e_reply)
+        if not isinstance(e_raw, str):
+            e_raw = json.dumps(e_raw, ensure_ascii=False)
+        return parse_single_edit_response(e_raw)
+
+    # 7. Apply decisions.
+    await _emit("Applying the changes to the document.")
+    author_config = AuthorConfig(name=author_name, date_override=author_date)
+    apply_result = await asyncio.to_thread(
+        pipeline.apply_decisions,
+        input_path=input_path,
+        output_path=output_path,
+        state=state,
+        decisions=decisions,
+        author_config=author_config,
+        executor_callback=executor_callback,
+    )
+
+    # 8. Verify and assemble result.
+    ok, notes = await asyncio.to_thread(verify_output, output_path)
+
+    accepted = apply_result.accepts_applied
+    countered = sum(1 for o in apply_result.counter_proposes if o.status == "success")
+    commented = sum(1 for o in apply_result.add_comments if o.status == "success")
+    output_size = output_path.stat().st_size if output_path.exists() else 0
+    elapsed = (datetime.now(timezone.utc) - t0).total_seconds()
+
+    await _emit(
+        f"Done — output written to {output_path.name} "
+        f"({accepted} accepted, {countered} counter-proposed, "
+        f"{commented} commented)."
+    )
+
+    return RedlineResult(
+        output_path=output_path,
+        elapsed_seconds=elapsed,
+        decisions_total=len(decisions),
+        decisions_accepted=accepted,
+        decisions_countered=countered,
+        decisions_commented=commented,
+        output_size_bytes=output_size,
+        mechanical_ok=ok,
+        notes=notes,
+    )
 
 
 if __name__ == "__main__":
