@@ -50,6 +50,17 @@ class Channel(Protocol):
         `conversation_id`. The channel parses the id back into whatever
         shape its provider needs (e.g. Slack channel + thread_ts)."""
 
+    async def post_progress(self, *, conversation_id: str, text: str) -> None:
+        """Post a progress-narration update into the same conversation.
+
+        Distinguished from ``post_message`` so channels with a more
+        idiomatic surface for status updates (e.g. Slack reactions,
+        ephemeral messages) can override; the default for Slack is
+        identical to ``post_message`` (a threaded reply). The dispatcher
+        binds this per-invocation to a callback the redline tool can
+        await at well-defined milestones — see ADR 028.
+        """
+
     def on_inbound_message(self, handler: InboundHandler) -> None:
         """Register the dispatcher's handler. Called once before
         ``start()``; replacing the handler after ``start()`` is not

@@ -1,21 +1,28 @@
-"""Channel-to-GC dispatcher.
+"""Channel-to-agent dispatcher.
 
 Receives an ``InboundMessage`` from a ``Channel``, derives a deterministic
-LangGraph ``thread_id`` from the channel's ``conversation_id`` so multi-turn
-memory persists per conversation (and is isolated across conversations),
-invokes the General Counsel graph with the appropriate ``configurable``
-config, and posts the GC's final reply back via the channel.
+LangGraph ``thread_id`` from the channel's ``conversation_id`` so multi-
+turn memory persists per conversation (and is isolated across
+conversations), constructs a per-invocation agent with a progress
+callback bound to the originating conversation, invokes the agent with
+the appropriate ``configurable`` config, and posts the agent's final
+reply back via the channel.
 
-Design notes are in ADR 023:
-- Direct ``thread_id := conversation_id`` mapping. No hashing.
-- Async-first because the production channels are async I/O.
-- The dispatcher depends only on the ``ainvoke`` method of the GC graph;
-  the ``Graph`` Protocol below pins that contract for type checkers and
-  test stubs.
+Design notes:
+- ADR 023: direct ``thread_id := conversation_id`` mapping, no hashing,
+  async-first.
+- ADR 026: front-door agent is a LangChain ``CompiledStateGraph``
+  built by :func:`shared.agents.orchestrator.build_orchestrator`.
+- ADR 028: progress narration is a per-invocation callback bound to the
+  Slack-thread-scoped ``Channel.post_progress``. The dispatcher rebuilds
+  the agent per ``handle()`` call so the redline tool's closure captures
+  the right callback for this conversation. The shared ``MemorySaver`` is
+  passed by the runtime so per-conversation memory persists across
+  rebuilds.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -30,8 +37,9 @@ _NO_REPLY_FALLBACK = "<no reply produced>"
 class Graph(Protocol):
     """Subset of LangGraph ``CompiledStateGraph`` the dispatcher depends on.
 
-    ``create_deep_agent(...)`` returns a ``CompiledStateGraph`` which
-    implements this Protocol. Tests pass a stub.
+    Both ``deepagents.create_deep_agent`` (M2) and
+    ``langchain.agents.create_agent`` (M3) return objects that implement
+    this Protocol. Tests pass a stub.
     """
 
     async def ainvoke(
@@ -41,25 +49,49 @@ class Graph(Protocol):
     ) -> Mapping[str, Any]: ...
 
 
+ProgressCallback = Callable[[str], Awaitable[None]]
+"""Async callback the dispatcher hands to the agent factory per invocation."""
+
+AgentFactory = Callable[[ProgressCallback], Graph]
+"""Constructs an agent bound to a particular conversation's progress callback.
+
+The runtime supplies a factory that closes over the shared MemorySaver and
+M3 default paths; the dispatcher calls it once per inbound message,
+passing a callback that posts to the originating conversation.
+"""
+
+
 @dataclass
 class Dispatcher:
-    """Bridges Channel inbound messages to a Deep Agent graph.
+    """Bridges Channel inbound messages to a LangChain (or Deep Agent) graph.
 
-    Wired by the runtime (Phase 3) as::
+    Wired by the runtime as::
 
-        dispatcher = Dispatcher(channel=channel, gc_graph=gc_graph)
+        dispatcher = Dispatcher(channel=channel, agent_factory=factory)
         channel.on_inbound_message(dispatcher.handle)
         await channel.start()
+
+    The factory shape captures the per-invocation rebuild rule from
+    ADR 028: each inbound message gets a fresh agent with a callback
+    bound to its conversation_id.
     """
 
     channel: Channel
-    gc_graph: Graph
+    agent_factory: AgentFactory
 
     async def handle(self, message: InboundMessage) -> None:
-        """Round-trip one inbound message: invoke GC with thread-scoped
-        config, then post the GC's final reply back via the channel."""
+        """Round-trip one inbound message: build agent for this
+        conversation, invoke it with thread-scoped config, post the
+        final reply back via the channel."""
         thread_id = self.thread_id_for(message.conversation_id)
-        result = await self.gc_graph.ainvoke(
+
+        async def _progress(text: str) -> None:
+            await self.channel.post_progress(
+                conversation_id=message.conversation_id, text=text
+            )
+
+        agent = self.agent_factory(_progress)
+        result = await agent.ainvoke(
             {"messages": [HumanMessage(message.text)]},
             config={"configurable": {"thread_id": thread_id}},
         )

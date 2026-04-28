@@ -83,6 +83,16 @@ class SlackChannel:
                 thread_ts=thread_ts,
             )
 
+    async def post_progress(self, *, conversation_id: str, text: str) -> None:
+        """Post a progress-narration update into the same Slack thread.
+
+        For Slack, identical to ``post_message`` — same chat.postMessage
+        into the same thread_ts. Future channels with a more idiomatic
+        surface (Slack reactions, ephemeral messages) can override; M3's
+        decision (ADR 028) is to keep progress as plain threaded posts.
+        """
+        await self.post_message(conversation_id=conversation_id, text=text)
+
     def on_inbound_message(self, handler: InboundHandler) -> None:
         self._inbound = handler
 

@@ -28,9 +28,14 @@ class FakeChannel:
     Conforms to the ``Channel`` Protocol. ``simulate_inbound()`` is a
     test-only affordance for triggering the registered handler with a
     crafted ``InboundMessage``.
+
+    Progress posts (``post_progress``) and final replies (``post_message``)
+    are recorded separately so tests can assert on progress narration
+    without conflating it with the final reply.
     """
 
     posted_messages: list[PostedMessage] = field(default_factory=list)
+    posted_progress: list[PostedMessage] = field(default_factory=list)
     _handler: InboundHandler | None = None
     _started: bool = False
 
@@ -42,6 +47,11 @@ class FakeChannel:
 
     async def post_message(self, *, conversation_id: str, text: str) -> None:
         self.posted_messages.append(
+            PostedMessage(conversation_id=conversation_id, text=text)
+        )
+
+    async def post_progress(self, *, conversation_id: str, text: str) -> None:
+        self.posted_progress.append(
             PostedMessage(conversation_id=conversation_id, text=text)
         )
 

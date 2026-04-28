@@ -1,7 +1,8 @@
 """Oscar Enterprise runtime entry point.
 
-Wires the channel layer, the General Counsel Deep Agent, and the
-dispatcher into a long-running async process. Started inside the
+Wires the channel layer, the LangChain orchestrator (Oscar — ADR 026),
+the redline tool (ADR 027), and the dispatcher (ADR 023, reshape per
+ADR 028) into a long-running async process. Started inside the
 ``oscar-dev`` OpenShell sandbox.
 
 Order of operations is load-bearing:
@@ -11,13 +12,14 @@ Order of operations is load-bearing:
      environment. Any future caller that constructs settings at module
      import time would race the loader; ``run()`` therefore takes
      factories that defer construction until after the loader has run.
-  2. Channel and GC graph are built. AgentMail is deferred — its
-     credentials are not yet provisioned in ``/etc/oscar/oscar.env``,
-     so constructing ``AgentMailChannelSettings()`` would raise
-     ``ValidationError`` at startup. Re-enable in a future sprint
-     once ``OSCAR_AGENTMAIL_API_KEY`` and ``OSCAR_AGENTMAIL_INBOX_ID``
-     are populated; see the commented-out block below.
-  3. Dispatcher is wired as the channel's inbound handler.
+  2. Channel and the agent factory are built. AgentMail is deferred
+     pending credentials in ``/etc/oscar/oscar.env``; see commented-
+     out block below.
+  3. Dispatcher is wired as the channel's inbound handler. The
+     dispatcher rebuilds the agent per-invocation by calling the
+     supplied factory with a Slack-thread-scoped progress callback —
+     this is the M3 reshape from a static ``gc_graph`` to a
+     ``agent_factory`` closure (ADR 028).
   4. Channel is started; the underlying transport runs on its own
      background task. The runtime then blocks on a stop event.
   5. SIGTERM / SIGINT set the stop event; the channel is stopped
@@ -32,11 +34,19 @@ import logging
 import signal
 from collections.abc import Callable
 
-from shared.agents.general_counsel import build_general_counsel
+from langgraph.checkpoint.memory import MemorySaver
+
+from redline.tools._paths import (
+    DEFAULT_NDA_INPUT,
+    DEFAULT_NDA_ORIGINAL,
+    DEFAULT_NDA_OUTPUT,
+)
+from redline.tools.redline import build_redline_tool
+from shared.agents.orchestrator import build_orchestrator
 from shared.channels.base import Channel
 from shared.channels.slack.channel import SlackChannel
 from shared.channels.slack.config import SlackChannelSettings
-from shared.dispatcher import Dispatcher, Graph
+from shared.dispatcher import AgentFactory, Dispatcher, Graph, ProgressCallback
 from shared.secrets import load_host_secrets
 
 _logger = logging.getLogger(__name__)
@@ -46,7 +56,6 @@ _logger = logging.getLogger(__name__)
 _DEFAULT_STOP_TIMEOUT_SECS = 25.0
 
 ChannelFactory = Callable[[], Channel]
-GraphFactory = Callable[[], Graph]
 SecretsLoader = Callable[[], int]
 
 
@@ -57,6 +66,32 @@ def _build_slack_channel() -> Channel:
     vars; ``load_host_secrets()`` must have run before this is called.
     """
     return SlackChannel.from_settings(SlackChannelSettings())
+
+
+def _build_default_agent_factory() -> AgentFactory:
+    """Construct the M3 default agent factory.
+
+    Closes over a single shared :class:`MemorySaver` so per-conversation
+    memory persists across the per-invocation agent rebuilds the
+    dispatcher does (ADR 028). Returns a callable the dispatcher invokes
+    with a Slack-thread-scoped progress callback to produce a fresh
+    orchestrator+tool for each inbound message.
+    """
+    shared_checkpointer = MemorySaver()
+
+    def _factory(progress_callback: ProgressCallback) -> Graph:
+        redline_tool = build_redline_tool(
+            default_input_path=DEFAULT_NDA_INPUT,
+            default_original_path=DEFAULT_NDA_ORIGINAL,
+            default_output_path=DEFAULT_NDA_OUTPUT,
+            progress_callback=progress_callback,
+        )
+        return build_orchestrator(
+            redline_tool=redline_tool,
+            checkpointer=shared_checkpointer,
+        )
+
+    return _factory
 
 
 # AgentMail channel — DEFERRED to a future sprint.
@@ -82,7 +117,7 @@ async def run(
     *,
     secrets_loader: SecretsLoader = load_host_secrets,
     channel_factory: ChannelFactory = _build_slack_channel,
-    graph_factory: GraphFactory = build_general_counsel,
+    agent_factory: AgentFactory | None = None,
     stop_timeout_secs: float = _DEFAULT_STOP_TIMEOUT_SECS,
     stop_event: asyncio.Event | None = None,
 ) -> None:
@@ -95,9 +130,11 @@ async def run(
         channel_factory: Constructs the inbound/outbound ``Channel``.
             Default builds ``SlackChannel`` from
             ``SlackChannelSettings()``. Tests inject a ``FakeChannel``.
-        graph_factory: Constructs the GC graph. Default
-            ``build_general_counsel()`` (env-driven model + in-process
-            ``MemorySaver``).
+        agent_factory: Constructs the per-invocation agent. Default
+            builds Oscar (the LangChain orchestrator) wrapping the
+            redline tool, with a shared ``MemorySaver`` so per-
+            conversation memory persists across rebuilds. Tests inject
+            a stub-returning lambda.
         stop_timeout_secs: Upper bound on ``channel.stop()`` after a
             stop signal. If exceeded, the runtime exits with an error
             log rather than blocking past Kubernetes' grace period.
@@ -109,8 +146,9 @@ async def run(
     secrets_loader()
 
     channel = channel_factory()
-    graph = graph_factory()
-    dispatcher = Dispatcher(channel=channel, gc_graph=graph)
+    if agent_factory is None:
+        agent_factory = _build_default_agent_factory()
+    dispatcher = Dispatcher(channel=channel, agent_factory=agent_factory)
     channel.on_inbound_message(dispatcher.handle)
 
     if stop_event is None:

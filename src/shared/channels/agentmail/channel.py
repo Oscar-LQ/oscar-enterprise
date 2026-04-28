@@ -118,6 +118,17 @@ class AgentMailChannel:
             text=text,
         )
 
+    async def post_progress(self, *, conversation_id: str, text: str) -> None:
+        """Send a progress-narration update as a reply to the same thread.
+
+        Email semantics make every progress message a separate reply,
+        which would clutter the inbox. M3 keeps the channel-protocol
+        symmetry (ADR 028) — when AgentMail goes live in a future
+        sprint we may switch to coalescing progress updates into the
+        final reply, or delivering them via a different surface.
+        """
+        await self.post_message(conversation_id=conversation_id, text=text)
+
     def on_inbound_message(self, handler: InboundHandler) -> None:
         self._inbound = handler
 

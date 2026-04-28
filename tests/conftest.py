@@ -9,4 +9,26 @@ whole test tree.
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom marks so they don't trigger ``PytestUnknownMarkWarning``."""
+    config.addinivalue_line(
+        "markers",
+        "live: live integration test — gated by --live-integration and "
+        "credentials in /etc/oscar/oscar.env (M3+).",
+    )
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register the ``--live-integration`` flag at session level so the live
+    integration tests can opt-in via ``request.config.getoption(...)``."""
+    parser.addoption(
+        "--live-integration",
+        action="store_true",
+        default=False,
+        help="run live Slack + LLM integration tests (M3+)",
+    )

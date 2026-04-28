@@ -57,13 +57,17 @@ class StubGraph:
 
 @pytest.mark.asyncio
 async def test_run_loads_secrets_before_constructing_factories() -> None:
-    """Directive 1: secrets loader runs before channel + graph factories.
+    """Directive 1: secrets loader runs before channel factory.
 
     Settings classes (``SlackChannelSettings``, ``AgentMailChannelSettings``,
     and any future ``OSCAR_*`` ``BaseSettings``) read env vars at
     instance construction time. If a factory ran before the loader, it
     would see the un-populated environment and raise ``ValidationError``.
-    The runtime contract is that the loader is invoked first.
+
+    Note (M3 reshape, ADR 028): the agent factory is now per-invocation,
+    not constructed at startup, so it is not part of the startup call
+    order. Its env-var reads happen on ``dispatcher.handle()`` —
+    whenever the secrets loader has long since run.
     """
     call_order: list[str] = []
 
@@ -75,22 +79,18 @@ async def test_run_loads_secrets_before_constructing_factories() -> None:
         call_order.append("channel")
         return FakeChannel()
 
-    def graph_factory() -> StubGraph:
-        call_order.append("graph")
-        return StubGraph()
-
     stop_event = asyncio.Event()
     stop_event.set()  # exit immediately after start
 
     await run(
         secrets_loader=secrets_loader,
         channel_factory=channel_factory,
-        graph_factory=graph_factory,
+        agent_factory=lambda _cb: StubGraph(),
         stop_event=stop_event,
     )
 
-    assert call_order == ["secrets", "channel", "graph"], (
-        f"expected secrets→channel→graph, got {call_order!r}"
+    assert call_order == ["secrets", "channel"], (
+        f"expected secrets→channel, got {call_order!r}"
     )
 
 
@@ -114,7 +114,7 @@ async def test_run_registers_dispatcher_and_starts_channel() -> None:
         run(
             secrets_loader=lambda: 0,
             channel_factory=lambda: channel,
-            graph_factory=lambda: StubGraph(),
+            agent_factory=lambda _cb: StubGraph(),
             stop_event=stop_event,
         ),
         driver(),
@@ -142,7 +142,7 @@ async def test_run_round_trips_inbound_message_through_dispatcher() -> None:
         run(
             secrets_loader=lambda: 0,
             channel_factory=lambda: channel,
-            graph_factory=lambda: graph,
+            agent_factory=lambda _cb: graph,
             stop_event=stop_event,
         ),
         driver(),
@@ -165,7 +165,7 @@ async def test_run_stops_channel_on_stop_event() -> None:
     await run(
         secrets_loader=lambda: 0,
         channel_factory=lambda: channel,
-        graph_factory=lambda: StubGraph(),
+        agent_factory=lambda _cb: StubGraph(),
         stop_event=stop_event,
     )
 
@@ -214,7 +214,7 @@ async def test_run_does_not_hang_when_stop_exceeds_timeout(
             run(
                 secrets_loader=lambda: 0,
                 channel_factory=lambda: HangingChannel(),
-                graph_factory=lambda: StubGraph(),
+                agent_factory=lambda _cb: StubGraph(),
                 stop_timeout_secs=0.05,
                 stop_event=stop_event,
             ),

@@ -1,13 +1,17 @@
 """Dispatcher unit tests against FakeChannel + a stub Graph.
 
 Covers the four directives from M2 spec § Tests:
-  1. Dispatcher forwards inbound messages to the GC invoker.
+  1. Dispatcher forwards inbound messages to the agent invoker.
   2. Dispatcher posts replies back to the originating ``conversation_id``.
   3. Same conversation produces the same LangGraph thread_id across invocations.
   4. Different conversations produce different thread_ids.
 
-No LLM, no network. The Graph stub records calls and returns canned messages
-shaped like a real Deep Agent ``ainvoke`` result.
+Plus the M3 reshape (ADR 028):
+  5. Dispatcher calls the agent factory once per inbound message and
+     binds a progress callback that posts to the originating channel.
+
+No LLM, no network. The Graph stub records calls and returns canned
+messages shaped like a real LangChain agent ``ainvoke`` result.
 """
 from __future__ import annotations
 
@@ -58,7 +62,10 @@ def graph() -> StubGraph:
 
 @pytest.fixture
 def dispatcher(channel: FakeChannel, graph: StubGraph) -> Dispatcher:
-    d = Dispatcher(channel=channel, gc_graph=graph)
+    # M3: agent_factory replaces gc_graph. Tests that don't care about
+    # the per-invocation rebuild use a lambda that ignores the progress
+    # callback and returns the same stub. ADR 028.
+    d = Dispatcher(channel=channel, agent_factory=lambda _cb: graph)
     channel.on_inbound_message(d.handle)
     return d
 
@@ -149,6 +156,48 @@ def test_thread_id_derivation_is_pure_and_deterministic() -> None:
     assert Dispatcher.thread_id_for("C1:T1") == "C1:T1"
     assert Dispatcher.thread_id_for("X:Y:Z") == "X:Y:Z"
     assert Dispatcher.thread_id_for("C1:T1") == Dispatcher.thread_id_for("C1:T1")
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_calls_agent_factory_per_invocation_with_progress_callback(
+    channel: FakeChannel, graph: StubGraph
+) -> None:
+    """Directive 5: each inbound message triggers a fresh factory call,
+    and the supplied progress callback posts to the originating
+    conversation. ADR 028 — the per-invocation rebuild is what binds the
+    Slack-thread-scoped ``post_progress`` to the redline tool's closure.
+    """
+    factory_calls: list[Any] = []
+
+    def factory(progress_callback: Any) -> StubGraph:
+        factory_calls.append(progress_callback)
+        return graph
+
+    d = Dispatcher(channel=channel, agent_factory=factory)
+    channel.on_inbound_message(d.handle)
+
+    await channel.simulate_inbound(
+        InboundMessage(conversation_id="CX:T1", text="hi")
+    )
+    await channel.simulate_inbound(
+        InboundMessage(conversation_id="CX:T1", text="again")
+    )
+
+    # Factory called once per inbound message.
+    assert len(factory_calls) == 2
+
+    # The factory received two distinct callback closures (one per
+    # inbound), each posting via ``post_progress`` for its conversation.
+    cb_first, cb_second = factory_calls
+    await cb_first("milestone-1")
+    await cb_second("milestone-2")
+
+    assert len(channel.posted_progress) == 2
+    assert channel.posted_progress[0].conversation_id == "CX:T1"
+    assert channel.posted_progress[0].text == "milestone-1"
+    assert channel.posted_progress[1].text == "milestone-2"
+    # Final replies recorded separately from progress.
+    assert len(channel.posted_messages) == 2
 
 
 def _thread_id_from(config: Mapping[str, Any] | None) -> str | None:
