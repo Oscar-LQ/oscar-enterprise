@@ -18,7 +18,7 @@ AI-coded projects where Claude Code, Cursor, Copilot, or autonomous agents write
 
 ## Framework Stack (Current)
 
-This project currently uses **NVIDIA OpenShell** for sandbox runtime and governance, **LangGraph / LangChain** as the orchestration foundation, and **Deep Agents** as the agent harness on top. Do not reach for alternative agent frameworks (CrewAI, AutoGen, OpenAI Agents SDK, custom orchestrators) unless an ADR explicitly authorises it. The model layer underneath is dependency-injected — see PROJECT.md's LLM Policy section.
+This project uses **NVIDIA OpenShell** for sandbox runtime and governance, **LangGraph / LangChain** as the orchestration foundation, and a **layered agent harness** on top: **LangChain** at the front door (Oscar — see ADR 026), **Deep Agents** for practice-area heads where the work fits the subagent-delegation shape (see ADR 014), and **direct chat-model invocation** for long-running pipelines like the redline planner-executor (see ADR 019). Choose the harness that fits the work; do not reach for alternative agent frameworks (CrewAI, AutoGen, OpenAI Agents SDK, custom orchestrators) unless an ADR explicitly authorises it. The model layer underneath is dependency-injected — see PROJECT.md's LLM Policy section.
 
 ### Read OpenShell. Do Not Assume.
 
@@ -50,9 +50,9 @@ MCP's dual-ID pattern (Chg:N for LLM display, ooxml_id for Adeu wiring) is load-
 
 ---
 
-## [Process] [Architecture] Deep Agents Is Reference Material, Not Runtime
+## [Process] [Architecture] Agent Harness Per Use-Case
 
-Oscar's runtime does not use Deep Agents. The library is present in the venv as reference material for surface checks (e.g., `SubAgent.model` assignment in 10O Phase 0; `MemoryMiddleware` in 10Q Phase 0), but the pipeline since 10I uses direct `chat_model.invoke()` with stdlib infrastructure. Future research that surfaces a Deep Agents primitive should evaluate whether it fits Oscar's runtime philosophy before recommending adoption. (Banked from 10Q Phase 0: `MemoryMiddleware` would have violated the client-driven playbook constraint via its `edit_file` self-update prompt template.)
+Oscar's agent harness is layered. **LangChain** at the front door (Oscar's orchestrator — see ADR 026). **Deep Agents** per practice-area head where the work fits the subagent-delegation shape (Sprint 9 GC commercial-acceptreject is the canonical reference, ADR 014). **Direct `chat_model.invoke`** with stdlib infrastructure for long-running pipelines (10P redline; ADR 019). Choose the harness that fits the work; ADR 029 records the layering principle and supersedes the prior "Deep Agents is reference material" framing. The 2026-04-21 specific finding (Deep Agents' `MemoryMiddleware` `edit_file` self-update would have violated the client-driven playbook constraint) is preserved as a reason to be cautious about Deep Agents middleware in particular contexts, not as a blanket rejection.
 
 ---
 
